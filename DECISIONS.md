@@ -33,6 +33,29 @@ A one-liner per decision so future-you remembers *why*. Append, don't rewrite.
   hits on `/c/{token}` (NFC taps / QR scans) reach the React Router route
   instead of a Vercel 404.
 
+## Phase 2 — check-in loop (the de-risking milestone)
+
+- **Check-in runs in an Edge Function (`supabase/functions/checkin`), not the
+  browser.** It uses the auto-injected `service_role` key to write attendance,
+  so there is no client-side attendance INSERT policy (RLS keeps direct writes
+  closed; the function is the only writer).
+- **Sessions are NOT auto-created on check-in.** A volunteer opens the session
+  (sets `opened_at`) from the app/dashboard. If no session row exists for the
+  region today → `no_session`; if it exists but `opened_at` is null or
+  `closed_at` is set → `not_open`. This keeps the session-open guard meaningful
+  and sidesteps the "auto-create vs pre-create" open decision for v1.
+- **Session-open guard is the anti-abuse control.** A found/lost card tapped at
+  someone's home does nothing unless a volunteer has opened today's session at
+  the venue. Cards must also be `state = 'active'` (imported cards start
+  `pending`).
+- **Check-in method recorded as `nfc`.** Tap and QR scan hit the same URL, so we
+  can't distinguish them from the request; `nfc` is the default. Manual/name
+  check-ins (volunteer app, Phase 4) will set their own method.
+- **"Today" is computed in `Europe/London`**, not UTC, so a late-evening walk
+  doesn't roll to the wrong date.
+- **Idempotent attendance** via the `unique(session_id, member_id)` constraint:
+  a duplicate tap returns `already` instead of erroring (Postgres `23505`).
+
 ## Open decisions (resolve before launch)
 
 - Live domain: `walkersandtalkers.org` vs `.org.uk` (currently using `.org`

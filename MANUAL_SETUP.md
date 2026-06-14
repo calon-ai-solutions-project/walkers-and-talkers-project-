@@ -88,7 +88,37 @@ must be done by a human with access. They are ordered. Tick them off.
 - [ ] Verify the sending domain in Resend (SPF + DKIM + DMARC DNS records).
 - [ ] Create an API key, store it as `RESEND_API_KEY` (server-side only).
 
-## Out of scope here (Phase 2+)
+## H. Check-in loop (Phase 2 milestone — deploy + prove on the 2 sample cards)
 
-Edge Functions, the real check-in DB write, the welfare engine, Notion sync,
-Resend templates, and the full volunteer/admin apps.
+> Section G (Resend) is for Phase 3 and not needed for this milestone.
+
+The `checkin` Edge Function and the wired `/c/:token` page are in the repo.
+Deploy and prove the loop end to end before generating any more Phase 2.
+
+- [ ] Deploy the function: `supabase functions deploy checkin`
+      (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected by the Edge
+      runtime automatically — no secrets to set).
+- [ ] Activate the two sample cards (imported cards start `pending`):
+      ```sql
+      update cards set state = 'active' where token in ('<token1>', '<token2>');
+      ```
+- [ ] Open today's Bristol session so check-in is allowed (the volunteer app
+      will do this in Phase 4; for the sample test do it by hand):
+      ```sql
+      insert into sessions (region_id, session_date, opened_at)
+      select id, (now() at time zone 'Europe/London')::date, now()
+      from regions where slug = 'bristol'
+      on conflict (region_id, session_date)
+        do update set opened_at = now(), closed_at = null, cancelled = false;
+      ```
+- [ ] When the 2 printed samples arrive: tap each on a phone and scan each QR.
+      Confirm `/c/{token}` shows "Check-in received", and a row appears in
+      `attendance`. Tap again → still one row, page shows "already checked in".
+- [ ] Negative checks: close the session (`update sessions set closed_at = now()`)
+      → a tap shows "Check-in isn't open yet"; an unknown token → "Card not
+      recognised"; a `pending` card → "This card isn't active".
+
+## Still out of scope (Phase 2 remainder + Phase 3+)
+
+Notion sync + dedupe, welcome email on new member, the welfare engine, Resend
+templates, and the full volunteer/admin apps.

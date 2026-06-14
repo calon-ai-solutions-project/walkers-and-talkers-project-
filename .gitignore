@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+*.local
+*.tsbuildinfo
+
+# Emitted by `tsc -b` composite build from vite.config.ts
+vite.config.js
+vite.config.d.ts
+
+# Environment / secrets — NEVER commit these
+.env
+.env.*
+!.env.example
+
+# Member data files (sensitive personal data — keep out of git)
+*.xlsx
+*.xls
+*.csv
+
+# Editor / OS
+.DS_Store
+*.log
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Supabase local
+supabase/.branches
+supabase/.temp

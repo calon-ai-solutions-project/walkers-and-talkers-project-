@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(rm:*)",
+      "Bash(*service_role*)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(.env*)",
+      "Write(.env*)",
+      "Read(./secrets/**)"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+# Minimal Supabase CLI config. The project is linked by the user with
+# `supabase link --project-ref <ref>`; `project_id` is set on link.
+project_id = "walkers-talkers-prod"
+
+[db]
+# Local dev DB port (only used for `supabase start`).
+port = 54322
+major_version = 15
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]

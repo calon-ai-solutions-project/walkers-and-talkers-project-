@@ -117,6 +117,9 @@ loop end to end before building the by-name fallback.
       "Check-in isn't open yet"; **Cancel walk** → "Today's walk is off"; an
       unknown token → "Card not recognised"; a `pending` card → "This card
       isn't active yet".
+- [ ] **By-name fallback:** with check-in open, on the Sessions page type a
+      member's name under "Forgot their card?" and click **Check in**. Confirm
+      they appear in the attendee list and in `attendance` with `method = 'name'`.
 - [ ] **Rate-limiting (do before public launch):** set per-IP limits on the
       RPC/REST endpoint at the Supabase API gateway (Project → Settings → API /
       the edge gateway). It is intentionally NOT implemented in SQL.

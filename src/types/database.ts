@@ -302,6 +302,10 @@ export interface Database {
         Args: { p_token: string; p_method?: string };
         Returns: Json;
       };
+      check_in_member: {
+        Args: { p_member_id: string; p_session_id: string };
+        Returns: Json;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

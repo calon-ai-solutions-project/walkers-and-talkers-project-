@@ -71,6 +71,14 @@ A one-liner per decision so future-you remembers *why*. Append, don't rewrite.
   Sessions page, so a late walk doesn't roll to the wrong date.
 - **Session writes use normal RLS** (`sessions_modify_admin`): super_admin any
   region, regional_admin their own. No new function needed for session control.
+- **By-name / forgotten-card check-in** is a second SECURITY DEFINER function
+  `check_in_member(member_id, session_id)` — the manual counterpart to
+  `check_in_by_token`. It checks the caller's role/region via `auth_role()` /
+  `auth_region()` (super_admin any region; others their own), requires an open
+  session, is idempotent, records method `name`, sets `recorded_by`, and logs
+  to `checkin_attempts`. The resilience keystone: a forgotten card never blocks
+  a present member. Driven from the Sessions page member search (`members_safe`,
+  so no health_notes exposure).
 
 ## Open decisions (resolve before launch)
 

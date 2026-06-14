@@ -36,6 +36,13 @@ export default function Sessions() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // By-name (forgotten card) check-in.
+  const [query, setQuery] = useState("");
+  const [matches, setMatches] = useState<
+    { id: string; first_name: string; last_name: string | null }[]
+  >([]);
+  const [flash, setFlash] = useState<string | null>(null);
+
   // Regions: super_admin manages all; regional_admin is locked to their own.
   useEffect(() => {
     supabase
@@ -165,6 +172,56 @@ export default function Sessions() {
         .eq("id", session!.id),
     );
 
+  // Live member search for by-name check-in (region-scoped, no health_notes).
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2 || !regionId) {
+      setMatches([]);
+      return;
+    }
+    let active = true;
+    const t = setTimeout(async () => {
+      const { data } = await supabase
+        .from("members_safe")
+        .select("id, first_name, last_name")
+        .eq("region_id", regionId)
+        .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`)
+        .order("last_name")
+        .limit(8);
+      if (active) setMatches(data ?? []);
+    }, 200);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
+  }, [query, regionId]);
+
+  async function checkInByName(memberId: string, name: string) {
+    if (!session) return;
+    setBusy(true);
+    setError(null);
+    const { data, error } = await supabase.rpc("check_in_member", {
+      p_member_id: memberId,
+      p_session_id: session.id,
+    });
+    setBusy(false);
+    if (error) {
+      setError(error.message);
+    } else {
+      const status = (data as { status?: string })?.status;
+      setFlash(
+        status === "ok"
+          ? `Checked in ${name}`
+          : status === "already"
+            ? `${name} was already checked in`
+            : `Couldn't check in ${name} (${status ?? "error"})`,
+      );
+      setQuery("");
+      setMatches([]);
+      await loadAttendees(session.id);
+    }
+  }
+
   const status: "none" | "cancelled" | "open" | "closed" = !session
     ? "none"
     : session.cancelled
@@ -254,6 +311,49 @@ export default function Sessions() {
           )}
         </section>
 
+        {session && status === "open" && (
+          <section className="bg-white p-6 rounded-2xl shadow space-y-3">
+            <h2 className="text-lg font-medium">Forgot their card?</h2>
+            <p className="text-sm text-gray-500">
+              Search and check a member in by name.
+            </p>
+            <input
+              type="search"
+              placeholder="Type a name…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="w-full p-3 border rounded-lg"
+            />
+            {matches.length > 0 && (
+              <ul className="border rounded-lg divide-y">
+                {matches.map((m) => (
+                  <li
+                    key={m.id}
+                    className="flex items-center justify-between p-3"
+                  >
+                    <span>
+                      {m.first_name} {m.last_name ?? ""}
+                    </span>
+                    <button
+                      onClick={() =>
+                        void checkInByName(
+                          m.id,
+                          `${m.first_name} ${m.last_name ?? ""}`.trim(),
+                        )
+                      }
+                      disabled={busy}
+                      className="text-sm px-3 py-1 bg-wt-navy text-white rounded-lg disabled:opacity-50"
+                    >
+                      Check in
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {flash && <p className="text-sm text-green-700">{flash}</p>}
+          </section>
+        )}
+
         {session && status !== "cancelled" && (
           <section className="bg-white p-6 rounded-2xl shadow">
             <div className="flex items-center justify-between mb-3">
@@ -278,9 +378,6 @@ export default function Sessions() {
                 ))}
               </ul>
             )}
-            <p className="text-xs text-gray-400 mt-4">
-              Forgotten-card / by-name check-in arrives in the next pass.
-            </p>
           </section>
         )}
       </div>

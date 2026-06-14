@@ -240,6 +240,30 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["email_log"]["Insert"]>;
         Relationships: [];
       };
+      checkin_attempts: {
+        Row: {
+          id: string;
+          token_attempted: string | null;
+          card_id: string | null;
+          member_id: string | null;
+          session_id: string | null;
+          result: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          token_attempted?: string | null;
+          card_id?: string | null;
+          member_id?: string | null;
+          session_id?: string | null;
+          result: string;
+          created_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["checkin_attempts"]["Insert"]
+        >;
+        Relationships: [];
+      };
     };
     Views: {
       members_safe: {
@@ -273,6 +297,10 @@ export interface Database {
       auth_region: {
         Args: Record<string, never>;
         Returns: string;
+      };
+      check_in_by_token: {
+        Args: { p_token: string; p_method?: string };
+        Returns: Json;
       };
     };
     Enums: Record<string, never>;

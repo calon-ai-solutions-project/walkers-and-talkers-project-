@@ -35,26 +35,42 @@ A one-liner per decision so future-you remembers *why*. Append, don't rewrite.
 
 ## Phase 2 — check-in loop (the de-risking milestone)
 
-- **Check-in runs in an Edge Function (`supabase/functions/checkin`), not the
-  browser.** It uses the auto-injected `service_role` key to write attendance,
-  so there is no client-side attendance INSERT policy (RLS keeps direct writes
-  closed; the function is the only writer).
-- **Sessions are NOT auto-created on check-in.** A volunteer opens the session
-  (sets `opened_at`) from the app/dashboard. If no session row exists for the
-  region today → `no_session`; if it exists but `opened_at` is null or
-  `closed_at` is set → `not_open`. This keeps the session-open guard meaningful
-  and sidesteps the "auto-create vs pre-create" open decision for v1.
+- **Check-in is a `SECURITY DEFINER` Postgres function `check_in_by_token()`,
+  not an Edge Function.** The `/c/{token}` page is hit by anonymous users with
+  no JWT, so RLS can't scope them and direct attendance inserts are blocked.
+  The function runs with the owner's privileges, validates the token + open
+  session, and is the *only* path that writes attendance. Called from the anon
+  client via `supabase.rpc('check_in_by_token', { p_token })`.
+  - **Why not an Edge Function:** the page must feel instant (the brief: render
+    well under ~500ms, "no spinners"). Edge Functions cold-start (1–3s on first
+    hit after idle) — exactly the "member taps, nothing happens, walks off"
+    failure. An in-Postgres RPC has no cold start. (The earlier Edge Function
+    `supabase/functions/checkin` was removed in favour of this.)
+- **Idempotency** via the `unique(session_id, member_id)` constraint +
+  `insert … on conflict do nothing returning`: a duplicate tap returns
+  `already` instead of erroring.
+- **Audit logging:** every attempt (success or not) writes a row to
+  `checkin_attempts` inside the function. Read access is super_admin only;
+  there is no insert policy — only the SECURITY DEFINER function writes it.
+- **Rate-limiting lives at the Supabase API gateway, not in SQL.** Faking it in
+  a Postgres function is brittle; per-IP limits on the RPC endpoint are the
+  right control. Documented as a config step in MANUAL_SETUP.md.
+- **Sessions are NOT auto-created on check-in.** An admin opens the session
+  (sets `opened_at`) from the Sessions page. No session today → `no_session`;
+  exists but not opened / already closed → `not_open`. Keeps the session-open
+  guard meaningful and sidesteps the "auto-create vs pre-create" open decision.
 - **Session-open guard is the anti-abuse control.** A found/lost card tapped at
-  someone's home does nothing unless a volunteer has opened today's session at
-  the venue. Cards must also be `state = 'active'` (imported cards start
-  `pending`).
-- **Check-in method recorded as `nfc`.** Tap and QR scan hit the same URL, so we
-  can't distinguish them from the request; `nfc` is the default. Manual/name
-  check-ins (volunteer app, Phase 4) will set their own method.
-- **"Today" is computed in `Europe/London`**, not UTC, so a late-evening walk
-  doesn't roll to the wrong date.
-- **Idempotent attendance** via the `unique(session_id, member_id)` constraint:
-  a duplicate tap returns `already` instead of erroring (Postgres `23505`).
+  home does nothing unless an admin has opened today's session. Cards must also
+  be `state = 'active'` (imported cards start `pending`).
+- **Cancelling a walk** sets `cancelled = true` (Sessions page). The welfare
+  engine (Phase 3) must treat a cancelled session as "no walk" so members don't
+  get missed-you emails for a walk that didn't happen.
+- **Check-in method recorded as `nfc`** for taps/scans (same URL, can't tell
+  them apart). By-name/manual check-ins (next pass) set their own method.
+- **"Today" is computed in `Europe/London`** in both the function and the
+  Sessions page, so a late walk doesn't roll to the wrong date.
+- **Session writes use normal RLS** (`sessions_modify_admin`): super_admin any
+  region, regional_admin their own. No new function needed for session control.
 
 ## Open decisions (resolve before launch)
 

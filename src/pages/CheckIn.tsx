@@ -12,29 +12,30 @@ type CheckInStatus =
   | "inactive_card"
   | "error";
 
-type CheckInResult = { status: CheckInStatus; first_name?: string };
+type CheckInResult = {
+  status: CheckInStatus;
+  first_name?: string;
+  region?: string;
+};
 
 const NAVY_GRADIENT =
   "linear-gradient(135deg, #0A1A5E 0%, #1E3A8A 50%, #0A1A5E 100%)";
 
-function copyFor(result: CheckInResult): {
-  emoji: string;
-  title: string;
-  body: string;
-} {
-  const name = result.first_name ? `, ${result.first_name}` : "";
+function copyFor(result: CheckInResult): { emoji: string; title: string; body: string } {
+  const name = result.first_name ? ` ${result.first_name}` : "";
+  const at = result.region ? ` to the ${result.region} walk` : "";
   switch (result.status) {
     case "ok":
       return {
         emoji: "👋",
-        title: "Check-in received",
-        body: `Lovely to see you${name}. Enjoy the walk!`,
+        title: `Welcome${name}!`,
+        body: `You're checked in${at}. Lovely to see you — enjoy the walk.`,
       };
     case "already":
       return {
         emoji: "✅",
-        title: "You're already checked in",
-        body: `Good to see you${name} — you're on today's list.`,
+        title: `You're all set${name}`,
+        body: `Already checked in${at} today. Good to see you.`,
       };
     case "no_session":
       return {
@@ -57,7 +58,7 @@ function copyFor(result: CheckInResult): {
     case "inactive_card":
       return {
         emoji: "💳",
-        title: "This card isn't active",
+        title: "This card isn't active yet",
         body: "Please speak to a volunteer about your card.",
       };
     case "invalid_card":
@@ -78,33 +79,33 @@ function copyFor(result: CheckInResult): {
 
 export default function CheckIn() {
   const { token } = useParams<{ token: string }>();
+  // Start optimistic and warm — no spinner. The RPC has no cold start, so the
+  // real result lands in well under the "feels instant" budget and swaps in.
   const [result, setResult] = useState<CheckInResult | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
     (async () => {
       if (!token) {
-        if (active) {
-          setResult({ status: "invalid_card" });
-          setLoading(false);
-        }
+        if (active) setResult({ status: "invalid_card" });
         return;
       }
-      const { data, error } = await supabase.functions.invoke<CheckInResult>(
-        "checkin",
-        { body: { token } },
-      );
+      const { data, error } = await supabase.rpc("check_in_by_token", {
+        p_token: token,
+      });
       if (!active) return;
-      setResult(error || !data ? { status: "error" } : data);
-      setLoading(false);
+      setResult(
+        error || !data ? { status: "error" } : (data as CheckInResult),
+      );
     })();
     return () => {
       active = false;
     };
   }, [token]);
 
-  const content = loading ? null : copyFor(result ?? { status: "error" });
+  const content = result
+    ? copyFor(result)
+    : { emoji: "👋", title: "Checking you in…", body: "" };
 
   return (
     <main
@@ -112,18 +113,9 @@ export default function CheckIn() {
       style={{ background: NAVY_GRADIENT }}
     >
       <div className="text-center max-w-md">
-        {loading ? (
-          <>
-            <div className="text-5xl mb-6 animate-pulse">👋</div>
-            <p className="text-lg opacity-80">Checking you in…</p>
-          </>
-        ) : (
-          <>
-            <div className="text-7xl mb-6">{content!.emoji}</div>
-            <h1 className="text-4xl font-serif mb-3">{content!.title}</h1>
-            <p className="text-lg opacity-80">{content!.body}</p>
-          </>
-        )}
+        <div className="text-7xl mb-6">{content.emoji}</div>
+        <h1 className="text-4xl font-serif mb-3">{content.title}</h1>
+        {content.body && <p className="text-lg opacity-80">{content.body}</p>}
         <p className="text-xs opacity-40 mt-12 font-mono break-all">
           ref: {token}
         </p>

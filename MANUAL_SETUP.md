@@ -92,31 +92,34 @@ must be done by a human with access. They are ordered. Tick them off.
 
 > Section G (Resend) is for Phase 3 and not needed for this milestone.
 
-The `checkin` Edge Function and the wired `/c/:token` page are in the repo.
-Deploy and prove the loop end to end before generating any more Phase 2.
+Check-in is a `SECURITY DEFINER` RPC (`check_in_by_token`), the wired
+`/c/:token` page, and an admin **Sessions** page (open/close/cancel). Prove the
+loop end to end before building the by-name fallback.
 
-- [ ] Deploy the function: `supabase functions deploy checkin`
-      (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected by the Edge
-      runtime automatically — no secrets to set).
+- [ ] Apply the new migration: `supabase db push` (adds `check_in_by_token`,
+      the `checkin_attempts` audit table, and grants). No Edge Function to
+      deploy — the RPC runs inside Postgres.
+- [ ] Regenerate types: `supabase gen types typescript --linked > src/types/database.ts`
+      and commit (replaces the hand-authored stub for the new function/table).
 - [ ] Activate the two sample cards (imported cards start `pending`):
       ```sql
       update cards set state = 'active' where token in ('<token1>', '<token2>');
       ```
-- [ ] Open today's Bristol session so check-in is allowed (the volunteer app
-      will do this in Phase 4; for the sample test do it by hand):
-      ```sql
-      insert into sessions (region_id, session_date, opened_at)
-      select id, (now() at time zone 'Europe/London')::date, now()
-      from regions where slug = 'bristol'
-      on conflict (region_id, session_date)
-        do update set opened_at = now(), closed_at = null, cancelled = false;
-      ```
+- [ ] Open today's Bristol session: log in as super_admin/regional_admin →
+      **Dashboard → Walk sessions → Open check-in** (or the SQL in §H of the
+      original guide). This is the session-open guard in action.
 - [ ] When the 2 printed samples arrive: tap each on a phone and scan each QR.
-      Confirm `/c/{token}` shows "Check-in received", and a row appears in
-      `attendance`. Tap again → still one row, page shows "already checked in".
-- [ ] Negative checks: close the session (`update sessions set closed_at = now()`)
-      → a tap shows "Check-in isn't open yet"; an unknown token → "Card not
-      recognised"; a `pending` card → "This card isn't active".
+      Confirm `/c/{token}` shows "Welcome <name>! You're checked in to the
+      Bristol walk", and a row appears in `attendance`. Tap again → still one
+      row, page shows "You're all set". Confirm a row per attempt in
+      `checkin_attempts`.
+- [ ] Negative checks: from the Sessions page **Close check-in** → a tap shows
+      "Check-in isn't open yet"; **Cancel walk** → "Today's walk is off"; an
+      unknown token → "Card not recognised"; a `pending` card → "This card
+      isn't active yet".
+- [ ] **Rate-limiting (do before public launch):** set per-IP limits on the
+      RPC/REST endpoint at the Supabase API gateway (Project → Settings → API /
+      the edge gateway). It is intentionally NOT implemented in SQL.
 
 ## Still out of scope (Phase 2 remainder + Phase 3+)
 

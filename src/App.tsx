@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import CheckIn from "./pages/CheckIn";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import Sessions from "./pages/Sessions";
 import { RequireAuth } from "./components/RequireAuth";
 
 export default function App() {
@@ -17,6 +18,14 @@ export default function App() {
         element={
           <RequireAuth>
             <Dashboard />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/sessions"
+        element={
+          <RequireAuth role="regional_admin">
+            <Sessions />
           </RequireAuth>
         }
       />

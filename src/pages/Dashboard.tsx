@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 
@@ -53,6 +54,16 @@ export default function Dashboard() {
             dashboard arrives in Phase 3.
           </p>
         </section>
+
+        <Link
+          to="/sessions"
+          className="block bg-white p-6 rounded-2xl shadow hover:shadow-md transition"
+        >
+          <h2 className="text-lg font-medium">Walk sessions →</h2>
+          <p className="text-sm text-gray-400 mt-1">
+            Open today's check-in before the walk, close it after, or cancel.
+          </p>
+        </Link>
       </div>
     </main>
   );

@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 export default function Login() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -11,36 +13,16 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
-      options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
-      },
+      password,
     });
     setLoading(false);
     if (error) {
       setError(error.message);
     } else {
-      setSent(true);
+      navigate("/dashboard");
     }
-  }
-
-  if (sent) {
-    return (
-      <main className="min-h-screen flex items-center justify-center p-8 bg-gray-50">
-        <div className="text-center max-w-md bg-white p-8 rounded-2xl shadow">
-          <div className="text-5xl mb-4">📬</div>
-          <h1 className="text-2xl font-serif mb-3">Check your inbox</h1>
-          <p className="text-gray-600">
-            We sent a sign-in link to <strong>{email}</strong>. Click it to log
-            in.
-          </p>
-          <p className="text-sm text-gray-400 mt-6">
-            Link expires in 1 hour. Didn&apos;t arrive? Check spam.
-          </p>
-        </div>
-      </main>
-    );
   }
 
   return (
@@ -54,19 +36,33 @@ export default function Login() {
         <input
           type="email"
           required
-          placeholder="your email"
+          autoComplete="email"
+          placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-wt-navy"
         />
+        <input
+          type="password"
+          required
+          autoComplete="current-password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-wt-navy"
+        />
         <button
           type="submit"
-          disabled={loading || !email}
+          disabled={loading || !email || !password}
           className="w-full p-3 bg-wt-navy text-white rounded-lg disabled:opacity-50"
         >
-          {loading ? "Sending…" : "Send sign-in link"}
+          {loading ? "Signing in…" : "Sign in"}
         </button>
         {error && <p className="text-red-600 text-sm">{error}</p>}
+        <p className="text-xs text-gray-400">
+          Accounts are created by an administrator in Supabase. Forgot your
+          password? Ask a super-admin to reset it.
+        </p>
       </form>
     </main>
   );

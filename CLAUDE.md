@@ -28,7 +28,9 @@ people, not just a bug.
 ## Project conventions
 
 - React + Vite + TypeScript + Tailwind. Plain Tailwind (no shadcn yet).
-- Auth: Supabase magic link only, no passwords.
+- Auth: Supabase email + password. Admin accounts are created in the Supabase
+  dashboard (no public sign-up). (Originally magic-link; switched for simpler,
+  reliable admin sign-in without SMTP setup.)
 - Data fetching goes through the typed client in `src/lib/supabase.ts`.
 - Auth/session state lives in `src/lib/auth.tsx` (`useAuth`).
 - Route guards live in `src/components/RequireAuth.tsx`.

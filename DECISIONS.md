@@ -21,8 +21,12 @@ A one-liner per decision so future-you remembers *why*. Append, don't rewrite.
   super_admin read `members` directly. This is the "Option B" fix from the
   adversarial test — DB-enforced because a solo build will eventually forget a
   code-level guard.
-- **Auth = Supabase magic link only, no passwords.** Sign-ups disabled; admins
-  invited manually.
+- **Auth = Supabase email + password** (changed from magic-link). Admin accounts
+  are created in the Supabase dashboard (Authentication → Users → Add user, with
+  a password and auto-confirm); public sign-up stays disabled. Switched from
+  magic-link because it needs no SMTP/email-delivery setup and is simpler/faster
+  for admins to sign in during build and on-site. Magic-link can be reinstated
+  later for member-facing flows if wanted.
 - **`members_safe` view uses `security_invoker = true`** so it respects the
   caller's RLS rather than the view owner's.
 - **`service_role` key lives only in `scripts/`**, never in `src/` or the

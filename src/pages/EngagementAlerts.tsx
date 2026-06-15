@@ -1,32 +1,54 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, Eye, MessageSquare, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { AlertTriangle, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useMembers, useAttendanceCounts } from "@/hooks/useMembers";
 
-const flaggedMembers = [
-  { name: "Barbara Moore", location: "Taunton", lastAttended: "18 Nov 2024", visits: 8, phone: "07734 567 890", weeks: 8 },
-  { name: "Thomas Anderson", location: "Bristol", lastAttended: "11 Nov 2024", visits: 15, phone: "07745 678 901", weeks: 9 },
-  { name: "Jennifer White", location: "Cardiff", lastAttended: "4 Nov 2024", visits: 22, phone: "07756 789 012", weeks: 10 },
-  { name: "Charles Harris", location: "Worcester", lastAttended: "28 Oct 2024", visits: 6, phone: "07767 890 123", weeks: 11 },
-  { name: "Margaret Clark", location: "Bristol", lastAttended: "21 Oct 2024", visits: 34, phone: "07778 901 234", weeks: 12 },
-  { name: "Richard Lewis", location: "Durham", lastAttended: "14 Oct 2024", visits: 19, phone: "07789 012 345", weeks: 13 },
-  { name: "Dorothy Walker", location: "Bristol", lastAttended: "7 Oct 2024", visits: 41, phone: "07790 123 456", weeks: 14 },
-  { name: "George Hall", location: "Cardiff", lastAttended: "30 Sep 2024", visits: 11, phone: "07701 234 567", weeks: 15 },
-  { name: "Helen Allen", location: "Taunton", lastAttended: "23 Sep 2024", visits: 5, phone: "07712 345 678", weeks: 16 },
-  { name: "Kenneth Young", location: "Bristol", lastAttended: "16 Sep 2024", visits: 27, phone: "07723 456 789", weeks: 17 },
-  { name: "Betty King", location: "Worcester", lastAttended: "9 Sep 2024", visits: 3, phone: "07734 567 890", weeks: 18 },
-  { name: "Edward Wright", location: "Durham", lastAttended: "2 Sep 2024", visits: 14, phone: "07745 678 901", weeks: 19 },
-  { name: "Sandra Lopez", location: "Bristol", lastAttended: "26 Aug 2024", visits: 9, phone: "07756 789 012", weeks: 20 },
-  { name: "Frank Hill", location: "Cardiff", lastAttended: "19 Aug 2024", visits: 37, phone: "07767 890 123", weeks: 21 },
-];
+function fmtDate(iso: string | null) {
+  if (!iso) return "Never";
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 export default function EngagementAlerts() {
   const [filter, setFilter] = useState("8");
   const navigate = useNavigate();
+  const { data: members } = useMembers();
+  const { data: counts } = useAttendanceCounts();
 
-  const filtered = flaggedMembers.filter(m => m.weeks >= parseInt(filter));
+  const rows = useMemo(() => {
+    const now = Date.now();
+    return (members ?? [])
+      .map((m) => {
+        const c = counts?.[m.id];
+        const weeks = c?.last
+          ? Math.floor((now - new Date(c.last).getTime()) / (7 * 864e5))
+          : 999; // never attended
+        return {
+          id: m.id,
+          name: `${m.first_name} ${m.last_name ?? ""}`.trim(),
+          lastAttended: fmtDate(c?.last ?? null),
+          visits: c?.visits ?? 0,
+          phone: m.phone ?? "—",
+          weeks,
+        };
+      })
+      .filter((m) =>
+        filter === "52" ? m.weeks === 999 : m.weeks >= parseInt(filter, 10),
+      )
+      .sort((a, b) => b.weeks - a.weeks);
+  }, [members, counts, filter]);
 
   return (
     <div>
@@ -35,10 +57,17 @@ export default function EngagementAlerts() {
           <h1 className="page-header flex items-center gap-2">
             <AlertTriangle className="h-6 w-6 text-destructive" /> Engagement Alerts
           </h1>
-          <p className="page-subheader">Members not seen in {filter}+ weeks — {filtered.length} members flagged</p>
+          <p className="page-subheader">
+            {filter === "52"
+              ? "Members who have never checked in"
+              : `Members not seen in ${filter}+ weeks`}{" "}
+            — {rows.length} flagged
+          </p>
         </div>
         <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="4">4+ weeks</SelectItem>
             <SelectItem value="8">8+ weeks</SelectItem>
@@ -49,47 +78,52 @@ export default function EngagementAlerts() {
       </div>
 
       <div className="stat-card overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b">
-              <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Name</th>
-              <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Location</th>
-              <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Last Attended</th>
-              <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Total Visits</th>
-              <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Phone</th>
-              <th className="text-right py-3 px-4 font-semibold text-muted-foreground">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((m) => (
-              <tr key={m.name} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
-                <td className="py-3 px-4">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground">{m.name}</span>
-                    <Badge variant="destructive" className="text-xs">{m.weeks}w</Badge>
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-muted-foreground">{m.location}</td>
-                <td className="py-3 px-4 text-muted-foreground">{m.lastAttended}</td>
-                <td className="py-3 px-4 text-foreground">{m.visits}</td>
-                <td className="py-3 px-4 text-muted-foreground">{m.phone}</td>
-                <td className="py-3 px-4">
-                  <div className="flex items-center justify-end gap-1">
-                    <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Contacted
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
-                      <MessageSquare className="h-3.5 w-3.5" /> Note
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/members/MC-001")}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </td>
+        {rows.length === 0 ? (
+          <p className="text-muted-foreground py-8 text-center">
+            No members flagged at this threshold.
+          </p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Name</th>
+                <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Last Attended</th>
+                <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Total Visits</th>
+                <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Phone</th>
+                <th className="text-right py-3 px-4 font-semibold text-muted-foreground">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((m) => (
+                <tr key={m.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-foreground">{m.name}</span>
+                      <Badge variant="destructive" className="text-xs">
+                        {m.weeks === 999 ? "never" : `${m.weeks}w`}
+                      </Badge>
+                    </div>
+                  </td>
+                  <td className="py-3 px-4 text-muted-foreground">{m.lastAttended}</td>
+                  <td className="py-3 px-4 text-foreground">{m.visits}</td>
+                  <td className="py-3 px-4 text-muted-foreground">{m.phone}</td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center justify-end">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => navigate(`/members/${m.id}`)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

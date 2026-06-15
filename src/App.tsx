@@ -22,6 +22,7 @@ import MemberProfile from "./pages/MemberProfile";
 import AddMember from "./pages/AddMember";
 import Reports from "./pages/Reports";
 import EngagementAlerts from "./pages/EngagementAlerts";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -66,6 +67,7 @@ const App = () => (
               <Route path="/members/:id" element={<MemberProfile />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/alerts" element={<EngagementAlerts />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>

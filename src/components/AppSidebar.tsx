@@ -1,4 +1,4 @@
-import { LayoutDashboard, MapPin, ScanLine, Users, UserPlus, BarChart3, AlertTriangle } from "lucide-react";
+import { LayoutDashboard, MapPin, ScanLine, Users, UserPlus, BarChart3, AlertTriangle, Settings } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -21,6 +21,7 @@ const navItems = [
   { title: "Add Member", url: "/members/new", icon: UserPlus },
   { title: "Reports", url: "/reports", icon: BarChart3 },
   { title: "Engagement Alerts", url: "/alerts", icon: AlertTriangle },
+  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
@@ -38,8 +39,8 @@ export function AppSidebar() {
                 <span className="text-sidebar-accent-foreground font-bold text-sm">MC</span>
               </div>
               <div>
-                <h2 className="text-sm font-bold text-sidebar-foreground">MemberCheck</h2>
-                <p className="text-xs text-sidebar-muted">Attendance System</p>
+                <h2 className="text-sm font-bold text-sidebar-foreground">Walkers &amp; Talkers</h2>
+                <p className="text-xs text-sidebar-muted">Check-in &amp; welfare</p>
               </div>
             </div>
           )}

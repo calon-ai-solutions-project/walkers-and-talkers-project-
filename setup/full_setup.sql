@@ -150,6 +150,9 @@ create policy "profiles_select_super" on profiles for select using (auth_role() 
 drop policy if exists "profiles_update_own" on profiles;
 create policy "profiles_update_own" on profiles for update using (id = auth.uid())
   with check (id = auth.uid() and role = (select role from profiles where id = auth.uid()));
+drop policy if exists "profiles_update_super" on profiles;
+create policy "profiles_update_super" on profiles for update using (auth_role() = 'super_admin')
+  with check (auth_role() = 'super_admin');
 
 drop policy if exists "regions_select_authenticated" on regions;
 create policy "regions_select_authenticated" on regions for select using (auth.uid() is not null);
@@ -300,7 +303,7 @@ end; $$;
 revoke all on function check_in_by_token(text, text) from public;
 grant execute on function check_in_by_token(text, text) to anon, authenticated;
 
-create or replace function check_in_member(p_member_id uuid, p_session_id uuid)
+create or replace function manual_check_in(p_member_id uuid, p_session_id uuid)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   v_role text := auth_role(); v_region uuid := auth_region();
@@ -329,8 +332,8 @@ begin
     values (v_member.id, v_session.id, case when v_new then 'manual_ok' else 'manual_already' end);
   return jsonb_build_object('status', case when v_new then 'ok' else 'already' end, 'first_name', v_member.first_name);
 end; $$;
-revoke all on function check_in_member(uuid, uuid) from public;
-grant execute on function check_in_member(uuid, uuid) to authenticated;
+revoke all on function manual_check_in(uuid, uuid) from public;
+grant execute on function manual_check_in(uuid, uuid) to authenticated;
 
 -- ---------- SEED + TEST DATA ----------
 insert into regions (slug, name, walk_day, walk_time, contact_email, active)

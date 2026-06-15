@@ -31,24 +31,34 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </span>
             </div>
             <div className="flex items-center gap-3">
-              <div className="text-right leading-tight">
-                <span className="block text-sm text-foreground">
-                  {displayName}
-                </span>
-                {profile?.role && (
-                  <span className="block text-xs text-muted-foreground">
-                    {profile.role.replace("_", " ")}
-                  </span>
-                )}
-              </div>
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                  {displayName ? initials(displayName) : "?"}
-                </AvatarFallback>
-              </Avatar>
-              <Button variant="ghost" size="sm" onClick={() => void signOut()}>
-                Sign out
-              </Button>
+              {user ? (
+                <>
+                  <div className="text-right leading-tight">
+                    <span className="block text-sm text-foreground">
+                      {displayName}
+                    </span>
+                    {profile?.role && (
+                      <span className="block text-xs text-muted-foreground">
+                        {profile.role.replace("_", " ")}
+                      </span>
+                    )}
+                  </div>
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                      {displayName ? initials(displayName) : "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void signOut()}
+                  >
+                    Sign out
+                  </Button>
+                </>
+              ) : (
+                <span className="text-sm text-muted-foreground">Bristol</span>
+              )}
             </div>
           </header>
           <main className="flex-1 p-6 overflow-auto">{children}</main>

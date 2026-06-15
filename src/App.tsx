@@ -1,16 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  BrowserRouter,
-  Navigate,
-  Outlet,
-  Route,
-  Routes,
-} from "react-router-dom";
+import { BrowserRouter, Outlet, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/AppLayout";
-import { AuthProvider, useAuth } from "@/lib/auth";
+import { AuthProvider } from "@/lib/auth";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import CheckInPublic from "./pages/CheckInPublic";
@@ -26,16 +20,9 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function RequireAuthLayout() {
-  const { session, loading } = useAuth();
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-muted-foreground">
-        Loading…
-      </div>
-    );
-  }
-  if (!session) return <Navigate to="/login" replace />;
+// Layout wrapper for the portal screens. Auth is intentionally OFF for now
+// (no gate) — the Login/Signup pages still exist for when we switch it back on.
+function PortalLayout() {
   return (
     <AppLayout>
       <Outlet />
@@ -51,13 +38,14 @@ const App = () => (
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            {/* Public: the member tap / QR landing */}
+            {/* Public member tap / QR landing */}
             <Route path="/c/:token" element={<CheckInPublic />} />
+            {/* Auth pages kept for later (not enforced) */}
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
 
-            {/* Everything else requires sign-in */}
-            <Route element={<RequireAuthLayout />}>
+            {/* Open portal — no login required for now */}
+            <Route element={<PortalLayout />}>
               <Route path="/" element={<CheckIn />} />
               <Route path="/dashboard" element={<GlobalDashboard />} />
               <Route path="/bristol" element={<BristolDashboard />} />

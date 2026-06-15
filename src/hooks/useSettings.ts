@@ -31,6 +31,27 @@ export function useUpdateRole() {
   });
 }
 
+// First-user-becomes-admin: promotes the caller to super_admin, but only while
+// no super_admin exists yet (enforced in the DB function).
+export function useClaimAdmin() {
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc("claim_admin");
+      if (error) throw error;
+      return data as { status?: string };
+    },
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: async (password: string) => {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+    },
+  });
+}
+
 export type RegionSettings = {
   walk_day: string;
   walk_time: string;

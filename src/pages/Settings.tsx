@@ -16,6 +16,8 @@ import {
   useProfiles,
   useUpdateRole,
   useUpdateRegion,
+  useClaimAdmin,
+  useChangePassword,
   type Role,
 } from "@/hooks/useSettings";
 
@@ -27,10 +29,48 @@ export default function Settings() {
   const { data: profiles } = useProfiles();
   const updateRole = useUpdateRole();
 
+  const claimAdmin = useClaimAdmin();
+  const changePassword = useChangePassword();
+
   const [walkDay, setWalkDay] = useState("");
   const [walkTime, setWalkTime] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  const [claimMsg, setClaimMsg] = useState<string | null>(null);
+  const [newPw, setNewPw] = useState("");
+  const [pwMsg, setPwMsg] = useState<string | null>(null);
+
+  async function claim() {
+    setClaimMsg(null);
+    try {
+      const res = await claimAdmin.mutateAsync();
+      if (res?.status === "ok") {
+        setClaimMsg("You're now the admin. Reloading…");
+        setTimeout(() => window.location.reload(), 800);
+      } else if (res?.status === "admin_exists") {
+        setClaimMsg("An admin already exists — ask them to change your role.");
+      } else {
+        setClaimMsg(`Couldn't claim admin (${res?.status ?? "error"}).`);
+      }
+    } catch (e) {
+      setClaimMsg((e as Error).message);
+    }
+  }
+
+  async function savePassword() {
+    setPwMsg(null);
+    if (newPw.length < 8) {
+      setPwMsg("Password must be at least 8 characters.");
+      return;
+    }
+    try {
+      await changePassword.mutateAsync(newPw);
+      setNewPw("");
+      setPwMsg("Password updated.");
+    } catch (e) {
+      setPwMsg((e as Error).message);
+    }
+  }
 
   useEffect(() => {
     if (region) {
@@ -85,6 +125,41 @@ export default function Settings() {
         <Button variant="outline" size="sm" onClick={() => void signOut()}>
           Sign out
         </Button>
+      </div>
+
+      {/* Become admin (only meaningful if no admin exists yet) */}
+      {!isSuper && (
+        <div className="stat-card space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">Become the admin</h3>
+          <p className="text-sm text-muted-foreground">
+            If you're the first person setting this up, claim the super-admin
+            role. This only works while no admin exists yet.
+          </p>
+          <Button onClick={() => void claim()} disabled={claimAdmin.isPending}>
+            {claimAdmin.isPending ? "Claiming…" : "Make me admin"}
+          </Button>
+          {claimMsg && <p className="text-sm text-muted-foreground">{claimMsg}</p>}
+        </div>
+      )}
+
+      {/* Change password (in-portal, no email needed) */}
+      <div className="stat-card space-y-3">
+        <h3 className="text-sm font-semibold text-foreground">Change password</h3>
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+          <div className="space-y-2 flex-1">
+            <Label>New password</Label>
+            <Input
+              type="password"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+              placeholder="At least 8 characters"
+            />
+          </div>
+          <Button onClick={savePassword} disabled={changePassword.isPending || !newPw}>
+            {changePassword.isPending ? "Saving…" : "Update password"}
+          </Button>
+        </div>
+        {pwMsg && <p className="text-sm text-muted-foreground">{pwMsg}</p>}
       </div>
 
       {/* Region / walk settings */}

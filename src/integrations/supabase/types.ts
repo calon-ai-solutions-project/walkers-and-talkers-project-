@@ -476,6 +476,7 @@ export type Database = {
     }
     Functions: {
       check_in_by_token: { Args: { p_token: string }; Returns: Json }
+      claim_admin: { Args: Record<string, never>; Returns: Json }
       current_region: { Args: never; Returns: string }
       current_role: {
         Args: never

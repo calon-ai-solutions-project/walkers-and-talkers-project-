@@ -12,6 +12,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import CheckInPublic from "./pages/CheckInPublic";
 import CheckIn from "./pages/CheckIn";
 import GlobalDashboard from "./pages/GlobalDashboard";
@@ -53,6 +54,7 @@ const App = () => (
             {/* Public: the member tap / QR landing */}
             <Route path="/c/:token" element={<CheckInPublic />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
 
             {/* Everything else requires sign-in */}
             <Route element={<RequireAuthLayout />}>

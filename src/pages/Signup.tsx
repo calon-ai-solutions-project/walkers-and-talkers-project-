@@ -5,24 +5,54 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export default function Login() {
+export default function Signup() {
   const navigate = useNavigate();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
+      options: {
+        data: { full_name: fullName.trim() },
+        emailRedirectTo: `${window.location.origin}/`,
+      },
     });
     setLoading(false);
-    if (error) setError(error.message);
-    else navigate("/");
+    if (error) {
+      setError(error.message);
+    } else if (data.session) {
+      // Email confirmation is off → signed in immediately.
+      navigate("/");
+    } else {
+      // Confirmation email required.
+      setSent(true);
+    }
+  }
+
+  if (sent) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-8 bg-background">
+        <div className="w-full max-w-md bg-card p-8 rounded-2xl border shadow-sm text-center space-y-3">
+          <h1 className="text-2xl font-bold text-foreground">Check your inbox</h1>
+          <p className="text-sm text-muted-foreground">
+            We sent a confirmation link to <strong>{email}</strong>. Click it,
+            then sign in.
+          </p>
+          <Link to="/login" className="text-sm text-primary underline">
+            Back to sign in
+          </Link>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -33,9 +63,18 @@ export default function Login() {
       >
         <div>
           <h1 className="text-2xl font-bold text-foreground">
-            Walkers &amp; Talkers
+            Create your account
           </h1>
-          <p className="text-sm text-muted-foreground">Admin sign-in</p>
+          <p className="text-sm text-muted-foreground">Walkers &amp; Talkers</p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="fullName">Full name</Label>
+          <Input
+            id="fullName"
+            required
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
@@ -54,23 +93,25 @@ export default function Login() {
             id="password"
             type="password"
             required
-            autoComplete="current-password"
+            minLength={8}
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          <p className="text-xs text-muted-foreground">At least 8 characters.</p>
         </div>
         <Button
           type="submit"
           className="w-full"
-          disabled={loading || !email || !password}
+          disabled={loading || !email || !password || !fullName}
         >
-          {loading ? "Signing in…" : "Sign in"}
+          {loading ? "Creating account…" : "Create account"}
         </Button>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <p className="text-sm text-muted-foreground">
-          New here?{" "}
-          <Link to="/signup" className="text-primary underline">
-            Create an account
+          Already have an account?{" "}
+          <Link to="/login" className="text-primary underline">
+            Sign in
           </Link>
         </p>
       </form>

@@ -1,16 +1,71 @@
-import { Users, CalendarDays, AlertTriangle, Clock, ScanLine, UserPlus, BarChart3 } from "lucide-react";
+import {
+  Users,
+  CalendarDays,
+  AlertTriangle,
+  Clock,
+  ScanLine,
+  UserPlus,
+  BarChart3,
+} from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { useBristolRegion, useMembers, useAttendanceCounts } from "@/hooks/useMembers";
+import {
+  useTodaySession,
+  useRecentSessions,
+  useSessionAttendees,
+  useOpenSession,
+  useCloseSession,
+  useCancelSession,
+} from "@/hooks/useSessions";
 
-const recentSessions = [
-  { date: "Wed 15 Jan 2025", attended: 147, newMembers: 4 },
-  { date: "Wed 8 Jan 2025", attended: 139, newMembers: 2 },
-  { date: "Wed 1 Jan 2025", attended: 98, newMembers: 1 },
-];
+function fmtDate(d: string) {
+  return new Date(d).toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 export default function BristolDashboard() {
   const navigate = useNavigate();
+  const { data: region } = useBristolRegion();
+  const { data: members } = useMembers();
+  const { data: counts } = useAttendanceCounts();
+  const { data: session } = useTodaySession(region?.id);
+  const { data: attendees } = useSessionAttendees(session?.id);
+  const { data: recent } = useRecentSessions(region?.id, 12);
+
+  const openSession = useOpenSession();
+  const closeSession = useCloseSession();
+  const cancelSession = useCancelSession();
+
+  const total = members?.length ?? 0;
+  const presentToday = attendees?.length ?? 0;
+
+  const monthKey = new Date().toISOString().slice(0, 7);
+  const sessionsThisMonth = (recent ?? []).filter((s) =>
+    s.date.startsWith(monthKey),
+  ).length;
+
+  const cutoff = Date.now() - 56 * 864e5;
+  const notSeen = (members ?? []).filter((m) => {
+    const last = counts?.[m.id]?.last;
+    return !last || new Date(last).getTime() < cutoff;
+  }).length;
+
+  const status: "none" | "open" | "closed" | "cancelled" = !session
+    ? "none"
+    : session.cancelled
+      ? "cancelled"
+      : session.opened_at && !session.closed_at
+        ? "open"
+        : "closed";
+
+  const busy =
+    openSession.isPending || closeSession.isPending || cancelSession.isPending;
 
   return (
     <div>
@@ -20,33 +75,111 @@ export default function BristolDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard title="Total Members" value="312" icon={Users} />
-        <StatCard title="Present Today" value="147" icon={CalendarDays} variant="success" />
-        <StatCard title="Sessions This Month" value="3" icon={Clock} />
-        <StatCard title="Not Seen 8+ Weeks" value="14" subtitle="Needs attention" icon={AlertTriangle} variant="destructive" />
+        <StatCard title="Total Members" value={String(total)} icon={Users} />
+        <StatCard
+          title="Present Today"
+          value={String(presentToday)}
+          icon={CalendarDays}
+          variant="success"
+        />
+        <StatCard
+          title="Sessions This Month"
+          value={String(sessionsThisMonth)}
+          icon={Clock}
+        />
+        <StatCard
+          title="Not Seen 8+ Weeks"
+          value={String(notSeen)}
+          subtitle="Needs attention"
+          icon={AlertTriangle}
+          variant="destructive"
+        />
       </div>
 
+      {/* Today's session control */}
       <div className="stat-card mb-6">
-        <div className="flex items-center justify-between mb-1">
-          <h3 className="text-sm font-semibold text-foreground">Next Session</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-foreground">
+            Today&apos;s walk ({region?.walk_day ?? "Wednesday"})
+          </h3>
+          <span
+            className={
+              "text-xs px-2 py-1 rounded-full font-medium " +
+              (status === "open"
+                ? "bg-success/15 text-success"
+                : status === "cancelled"
+                  ? "bg-destructive/15 text-destructive"
+                  : "bg-muted text-muted-foreground")
+            }
+          >
+            {status === "none"
+              ? "Not opened"
+              : status === "open"
+                ? "Check-in open"
+                : status === "closed"
+                  ? "Closed"
+                  : "Cancelled"}
+          </span>
         </div>
-        <p className="text-lg font-bold text-foreground">Wednesday 22 January 2025 — 9:30am</p>
-        <p className="text-sm text-muted-foreground">Bristol Community Hall, BS1 4DJ</p>
+        <div className="flex flex-wrap gap-3">
+          {status === "none" && (
+            <Button disabled={busy || !region} onClick={() => openSession.mutate(region!.id)}>
+              Open check-in
+            </Button>
+          )}
+          {status === "open" && (
+            <>
+              <Button variant="outline" disabled={busy} onClick={() => closeSession.mutate(session!.id)}>
+                Close check-in
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={busy}
+                onClick={() =>
+                  cancelSession.mutate({
+                    regionId: region!.id,
+                    reason: window.prompt("Reason for cancelling?") ?? "",
+                  })
+                }
+              >
+                Cancel walk
+              </Button>
+            </>
+          )}
+          {status === "closed" && (
+            <Button disabled={busy || !region} onClick={() => openSession.mutate(region!.id)}>
+              Re-open check-in
+            </Button>
+          )}
+          {status === "cancelled" && (
+            <span className="text-sm text-muted-foreground">
+              {session?.cancelled_reason || "Walk cancelled."}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="stat-card mb-6">
         <h3 className="text-sm font-semibold text-foreground mb-4">Recent Attendance</h3>
-        <div className="space-y-3">
-          {recentSessions.map((s) => (
-            <div key={s.date} className="flex items-center justify-between border-b last:border-0 pb-3 last:pb-0">
-              <span className="text-sm font-medium text-foreground">{s.date}</span>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>{s.attended} attended</span>
-                <span className="text-success">{s.newMembers} new</span>
+        {!recent || recent.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No sessions yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {recent.slice(0, 5).map((s) => (
+              <div
+                key={s.id}
+                className="flex items-center justify-between border-b last:border-0 pb-3 last:pb-0"
+              >
+                <span className="text-sm font-medium text-foreground">
+                  {fmtDate(s.date)}
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {s.cancelled ? "cancelled" : `${s.attended} attended`}
+                </span>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3">

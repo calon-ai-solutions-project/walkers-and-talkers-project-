@@ -6,10 +6,11 @@ import {
   type ReactNode,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "./supabase";
-import type { Role } from "../types/database";
+import { supabase } from "@/integrations/supabase/client";
 
-type Profile = {
+export type Role = "super_admin" | "regional_admin" | "volunteer";
+
+export type Profile = {
   id: string;
   email: string;
   full_name: string | null;
@@ -45,15 +46,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       else setLoading(false);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) void fetchProfile(session.user.id);
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      setSession(s);
+      if (s) void fetchProfile(s.user.id);
       else {
         setProfile(null);
         setLoading(false);
       }
     });
-
     return () => sub.subscription.unsubscribe();
   }, []);
 

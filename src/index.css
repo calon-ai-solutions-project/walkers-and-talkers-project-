@@ -1,3 +1,77 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 30% 97%;
+    --foreground: 228 60% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 228 60% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 228 60% 15%;
+
+    --primary: 228 72% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 224 55% 94%;
+    --secondary-foreground: 228 72% 36%;
+
+    --muted: 220 20% 95%;
+    --muted-foreground: 220 10% 45%;
+
+    --accent: 224 55% 94%;
+    --accent-foreground: 228 72% 36%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 72% 40%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 220 20% 90%;
+    --input: 220 20% 90%;
+    --ring: 228 72% 36%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 228 72% 36%;
+    --sidebar-foreground: 224 55% 94%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 228 72% 36%;
+    --sidebar-accent: 228 65% 42%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 228 60% 45%;
+    --sidebar-ring: 0 0% 100%;
+    --sidebar-muted: 228 50% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer utilities {
+  .stat-card {
+    @apply bg-card rounded-xl border p-6 shadow-sm;
+  }
+  .page-header {
+    @apply text-2xl font-bold text-foreground;
+  }
+  .page-subheader {
+    @apply text-sm text-muted-foreground;
+  }
+}

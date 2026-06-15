@@ -1,38 +1,76 @@
-import { Routes, Route, Navigate } from "react-router-dom";
-import CheckIn from "./pages/CheckIn";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  BrowserRouter,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+} from "react-router-dom";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { AppLayout } from "@/components/AppLayout";
+import { AuthProvider, useAuth } from "@/lib/auth";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Sessions from "./pages/Sessions";
-import { RequireAuth } from "./components/RequireAuth";
+import CheckInPublic from "./pages/CheckInPublic";
+import CheckIn from "./pages/CheckIn";
+import GlobalDashboard from "./pages/GlobalDashboard";
+import BristolDashboard from "./pages/BristolDashboard";
+import MemberDirectory from "./pages/MemberDirectory";
+import MemberProfile from "./pages/MemberProfile";
+import AddMember from "./pages/AddMember";
+import Reports from "./pages/Reports";
+import EngagementAlerts from "./pages/EngagementAlerts";
+import NotFound from "./pages/NotFound";
 
-export default function App() {
+const queryClient = new QueryClient();
+
+function RequireAuthLayout() {
+  const { session, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
+  if (!session) return <Navigate to="/login" replace />;
   return (
-    <Routes>
-      {/* Public check-in landing — NFC taps and QR scans hit /c/{token} */}
-      <Route path="/c/:token" element={<CheckIn />} />
-
-      {/* Auth */}
-      <Route path="/login" element={<Login />} />
-      <Route
-        path="/dashboard"
-        element={
-          <RequireAuth>
-            <Dashboard />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/sessions"
-        element={
-          <RequireAuth role="regional_admin">
-            <Sessions />
-          </RequireAuth>
-        }
-      />
-
-      {/* Default → login */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+    <AppLayout>
+      <Outlet />
+    </AppLayout>
   );
 }
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public: the member tap / QR landing */}
+            <Route path="/c/:token" element={<CheckInPublic />} />
+            <Route path="/login" element={<Login />} />
+
+            {/* Everything else requires sign-in */}
+            <Route element={<RequireAuthLayout />}>
+              <Route path="/" element={<CheckIn />} />
+              <Route path="/dashboard" element={<GlobalDashboard />} />
+              <Route path="/bristol" element={<BristolDashboard />} />
+              <Route path="/members" element={<MemberDirectory />} />
+              <Route path="/members/new" element={<AddMember />} />
+              <Route path="/members/:id" element={<MemberProfile />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/alerts" element={<EngagementAlerts />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
+
+export default App;

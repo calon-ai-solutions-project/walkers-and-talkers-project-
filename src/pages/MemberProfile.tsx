@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMember, useMemberAttendance } from "@/hooks/useMembers";
+import { useMemberCards, useIssueCard } from "@/hooks/useCards";
+import { RevokeCardDialog } from "@/components/RevokeCardDialog";
 
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
@@ -27,6 +30,15 @@ export default function MemberProfile() {
   const { id } = useParams<{ id: string }>();
   const { data: member, isLoading, error } = useMember(id);
   const { data: attendance } = useMemberAttendance(id);
+  const { data: cards } = useMemberCards(id);
+  const issueCard = useIssueCard();
+  const [revokeId, setRevokeId] = useState<string | null>(null);
+
+  async function issueAndProgram() {
+    if (!id) return;
+    const created = await issueCard.mutateAsync(id);
+    navigate(`/cards/program/${created.id}`);
+  }
 
   if (isLoading) {
     return <p className="text-muted-foreground">Loading member…</p>;
@@ -125,6 +137,73 @@ export default function MemberProfile() {
               </div>
             </div>
           </div>
+
+          {/* Cards */}
+          <div className="stat-card">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-foreground">Cards</h3>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void issueAndProgram()}
+                disabled={issueCard.isPending}
+              >
+                Issue new card
+              </Button>
+            </div>
+            {!cards || cards.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No active card. Issue one to get started.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {cards.map((c) => (
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between border-b last:border-0 pb-2 last:pb-0"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={
+                          c.state === "active"
+                            ? "default"
+                            : c.state === "revoked"
+                              ? "destructive"
+                              : "secondary"
+                        }
+                      >
+                        {c.state}
+                      </Badge>
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {c.token}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {(c.state === "pending" || c.state === "active") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate(`/cards/program/${c.id}`)}
+                        >
+                          Program
+                        </Button>
+                      )}
+                      {c.state !== "revoked" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive"
+                          onClick={() => setRevokeId(c.id)}
+                        >
+                          Revoke
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="w-full lg:w-96">
@@ -157,6 +236,12 @@ export default function MemberProfile() {
           </div>
         </div>
       </div>
+
+      <RevokeCardDialog
+        cardId={revokeId}
+        open={!!revokeId}
+        onOpenChange={(v) => !v && setRevokeId(null)}
+      />
     </div>
   );
 }

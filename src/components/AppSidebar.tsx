@@ -1,4 +1,4 @@
-import { LayoutDashboard, MapPin, ScanLine, Users, UserPlus, BarChart3, AlertTriangle, Settings } from "lucide-react";
+import { LayoutDashboard, MapPin, ScanLine, Users, UserPlus, BarChart3, AlertTriangle, Settings, CreditCard } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -21,6 +21,7 @@ const navItems = [
   { title: "Add Member", url: "/members/new", icon: UserPlus },
   { title: "Reports", url: "/reports", icon: BarChart3 },
   { title: "Engagement Alerts", url: "/alerts", icon: AlertTriangle },
+  { title: "Cards", url: "/cards", icon: CreditCard },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 

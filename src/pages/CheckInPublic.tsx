@@ -76,8 +76,10 @@ export default function CheckInPublic() {
   const loading = !result;
   const r = result ?? { status: "error" as CheckInStatus };
   const h = headline(r);
-  const showMemberCard =
-    (r.status === "ok" || r.status === "already") && !!r.member_no;
+  // Show the member card whenever we recognised the card (any state that
+  // returned member info) — so a tap always greets them with their card,
+  // even on a cancelled / no-walk day.
+  const showMemberCard = !!r.member_no;
 
   return (
     <main
@@ -122,10 +124,6 @@ export default function CheckInPublic() {
           </>
         )}
       </div>
-
-      <p className="text-[11px] text-white/30 mt-10 font-mono break-all">
-        ref: {token}
-      </p>
     </main>
   );
 }

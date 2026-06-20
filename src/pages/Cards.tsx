@@ -52,12 +52,65 @@ export default function Cards() {
         </TabsList>
       </Tabs>
 
-      <div className="stat-card overflow-x-auto">
+      <div>
         {isLoading ? (
           <p className="text-muted-foreground py-8 text-center">Loading cards…</p>
         ) : rows.length === 0 ? (
           <p className="text-muted-foreground py-8 text-center">No {tab} cards.</p>
         ) : (
+         <>
+          {/* Mobile: card list */}
+          <div className="md:hidden space-y-3">
+            {rows.map((c) => (
+              <div key={c.id} className="bg-card rounded-2xl border p-4 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-foreground truncate">
+                      {c.member
+                        ? `${c.member.first_name} ${c.member.last_name ?? ""}`.trim()
+                        : "—"}
+                    </p>
+                    <p className="font-mono text-xs text-muted-foreground truncate">
+                      {c.token}
+                    </p>
+                  </div>
+                  <span
+                    className={
+                      "px-3 py-1 rounded-full text-xs font-semibold capitalize shrink-0 " +
+                      statePill[c.state]
+                    }
+                  >
+                    {c.state}
+                  </span>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  {(c.state === "pending" || c.state === "active") && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => navigate(`/cards/program/${c.id}`)}
+                    >
+                      Program
+                    </Button>
+                  )}
+                  {c.state !== "revoked" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1 text-destructive"
+                      onClick={() => setRevokeId(c.id)}
+                    >
+                      Revoke
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="hidden md:block stat-card overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
@@ -116,6 +169,8 @@ export default function Cards() {
               ))}
             </tbody>
           </table>
+          </div>
+         </>
         )}
       </div>
 

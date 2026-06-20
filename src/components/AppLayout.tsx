@@ -23,17 +23,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-16 flex items-center justify-between border-b glass px-6 sticky top-0 z-20">
-            <div className="flex items-center gap-3">
+          <header className="h-16 flex items-center justify-between border-b glass px-3 sm:px-6 sticky top-0 z-20">
+            <div className="flex items-center gap-2 min-w-0">
               <SidebarTrigger />
-              <span className="text-base font-extrabold tracking-tight gradient-text">
+              <span className="text-sm sm:text-base font-extrabold tracking-tight gradient-text truncate">
                 Walkers &amp; Talkers
               </span>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               {user ? (
                 <>
-                  <div className="text-right leading-tight">
+                  <div className="text-right leading-tight hidden sm:block">
                     <span className="block text-sm text-foreground">
                       {displayName}
                     </span>
@@ -62,7 +62,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
           <main className="flex-1 overflow-auto">
-            <div className="max-w-6xl mx-auto p-6 md:p-8">{children}</div>
+            <div className="max-w-6xl mx-auto p-4 sm:p-6 md:p-8">{children}</div>
           </main>
         </div>
       </div>

@@ -77,12 +77,45 @@ export default function EngagementAlerts() {
         </Select>
       </div>
 
-      <div className="stat-card overflow-x-auto">
+      <div>
         {rows.length === 0 ? (
           <p className="text-muted-foreground py-8 text-center">
             No members flagged at this threshold.
           </p>
         ) : (
+         <>
+          {/* Mobile: card list */}
+          <div className="md:hidden space-y-3">
+            {rows.map((m) => (
+              <div key={m.id} className="bg-card rounded-2xl border p-4 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    onClick={() => navigate(`/members/${m.id}`)}
+                    className="font-semibold text-foreground text-left truncate"
+                  >
+                    {m.name}
+                  </button>
+                  <Badge variant="destructive" className="text-xs shrink-0">
+                    {m.weeks === 999 ? "never" : `${m.weeks}w`}
+                  </Badge>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Last attended {m.lastAttended} · {m.visits} visits
+                </div>
+                {m.phone !== "—" && (
+                  <a
+                    href={`tel:${m.phone}`}
+                    className="inline-block mt-2 text-sm text-primary font-medium"
+                  >
+                    📞 {m.phone}
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="hidden md:block stat-card overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
@@ -123,6 +156,8 @@ export default function EngagementAlerts() {
               ))}
             </tbody>
           </table>
+          </div>
+         </>
         )}
       </div>
     </div>

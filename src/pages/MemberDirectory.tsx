@@ -101,7 +101,7 @@ export default function MemberDirectory() {
         </div>
       </div>
 
-      <div className="stat-card overflow-x-auto">
+      <div>
         {isLoading ? (
           <p className="text-muted-foreground py-8 text-center">Loading members…</p>
         ) : error ? (
@@ -113,6 +113,32 @@ export default function MemberDirectory() {
             No members found.
           </p>
         ) : (
+         <>
+          {/* Mobile: tappable cards */}
+          <div className="md:hidden space-y-3">
+            {rows.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => navigate(`/members/${m.id}`)}
+                className="w-full text-left bg-card rounded-2xl border p-4 shadow-sm active:scale-[0.99] transition"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-foreground truncate">{m.name}</p>
+                    <p className="text-xs text-muted-foreground">{m.member_no}</p>
+                  </div>
+                  <Badge variant={statusVariant[m.status]}>{m.status}</Badge>
+                </div>
+                <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                  <span>{m.visits} visits</span>
+                  <span>Last seen {m.lastSeen}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="hidden md:block stat-card overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
@@ -157,6 +183,8 @@ export default function MemberDirectory() {
               ))}
             </tbody>
           </table>
+          </div>
+         </>
         )}
       </div>
 

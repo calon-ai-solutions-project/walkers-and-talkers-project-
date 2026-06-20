@@ -1,12 +1,10 @@
 /**
  * Local ACR122U bridge for the Walkers & Talkers portal.
  *
- * Run this on the computer that has the ACR122U plugged in:
  *   cd tools/acr122u && npm install && npm start
  *
- * It listens on http://127.0.0.1:8899. The portal's "USB Reader" tab posts the
- * card URL here; you hold a blank NTAG card on the reader and it writes it.
- * Keep this window open while programming cards.
+ * Listens on http://127.0.0.1:8899. The portal's "USB Reader" tab posts a card
+ * URL here; place a blank NTAG card on the reader and it writes it.
  */
 import http from "node:http";
 import { NFC } from "nfc-pcsc";
@@ -30,26 +28,20 @@ function buildNdefUriTlv(fullUrl) {
     }
   }
   const payload = Buffer.concat([Buffer.from([prefixCode]), Buffer.from(rest, "utf8")]);
-  const record = Buffer.concat([
-    Buffer.from([0xd1, 0x01, payload.length, 0x55]),
-    payload,
-  ]);
+  const record = Buffer.concat([Buffer.from([0xd1, 0x01, payload.length, 0x55]), payload]);
   let tlv;
   if (record.length < 255) {
     tlv = Buffer.concat([Buffer.from([0x03, record.length]), record, Buffer.from([0xfe])]);
   } else {
     const len = record.length;
-    tlv = Buffer.concat([
-      Buffer.from([0x03, 0xff, (len >> 8) & 0xff, len & 0xff]),
-      record,
-      Buffer.from([0xfe]),
-    ]);
+    tlv = Buffer.concat([Buffer.from([0x03, 0xff, (len >> 8) & 0xff, len & 0xff]), record, Buffer.from([0xfe])]);
   }
   const pad = (4 - (tlv.length % 4)) % 4;
   return Buffer.concat([tlv, Buffer.alloc(pad, 0x00)]);
 }
 
 let reader = null;
+let cardOn = false;
 let pending = null; // { data, resolve, reject, timer }
 
 function checkResp(resp, page) {
@@ -59,19 +51,13 @@ function checkResp(resp, page) {
   if (!okPn532 && !ok9000) throw new Error(`page ${page} write rejected (resp ${hex})`);
 }
 
-async function writeCard(card) {
-  if (!pending) {
-    console.log(
-      `Card detected (${card?.uid ?? "no-uid"}) but no write requested yet — ` +
-        "click 'Write to card' in the app first, then tap.",
-    );
-    return;
-  }
+async function attemptWrite() {
+  if (!pending || !reader) return;
   const { data, resolve, reject, timer } = pending;
   pending = null;
   clearTimeout(timer);
   try {
-    console.log(`Card detected (${card?.uid ?? "no-uid"}) — writing ${data.length} bytes…`);
+    console.log(`Writing ${data.length} bytes…`);
     for (let i = 0; i < data.length; i += 4) {
       const page = 4 + i / 4;
       const apdu = Buffer.concat([
@@ -93,9 +79,21 @@ const nfc = new NFC();
 nfc.on("reader", (r) => {
   reader = r;
   console.log(`Reader connected: ${r.reader.name}`);
-  r.on("card", (card) => void writeCard(card));
+  r.on("card", (card) => {
+    cardOn = true;
+    console.log(
+      `Card detected — type=${card?.type ?? "?"} atr=${card?.atr?.toString("hex") ?? "?"}`,
+    );
+    void attemptWrite();
+  });
+  r.on("card.off", () => {
+    cardOn = false;
+  });
   r.on("end", () => {
-    if (reader === r) reader = null;
+    if (reader === r) {
+      reader = null;
+      cardOn = false;
+    }
     console.log("Reader removed.");
   });
   r.on("error", (e) => console.error("Reader error:", e.message));
@@ -108,10 +106,15 @@ function writeOnNextCard(url, timeoutMs = 40000) {
     const data = buildNdefUriTlv(url);
     const timer = setTimeout(() => {
       pending = null;
-      reject(new Error("Timed out — no card tapped. Click Write, THEN place the card (lift & retap if it was already on the reader)."));
+      reject(new Error("Timed out — no card. Place a blank NTAG card flat on the reader."));
     }, timeoutMs);
     pending = { data, resolve, reject, timer };
-    console.log("Ready — tap a blank NTAG card on the reader now.");
+    if (cardOn) {
+      console.log("Card already on reader — writing now.");
+      void attemptWrite();
+    } else {
+      console.log("Ready — place a blank NTAG card on the reader now.");
+    }
   });
 }
 
@@ -131,7 +134,7 @@ http
     }
     if (req.url.startsWith("/health")) {
       res.writeHead(200, { "content-type": "application/json" });
-      return res.end(JSON.stringify({ ok: true, reader: reader?.reader.name ?? null }));
+      return res.end(JSON.stringify({ ok: true, reader: reader?.reader.name ?? null, cardOn }));
     }
     if (req.method === "POST" && req.url.startsWith("/write")) {
       let body = "";
@@ -140,13 +143,11 @@ http
         try {
           const { url } = JSON.parse(body || "{}");
           if (!url) throw new Error("Missing url");
-          console.log("Waiting for a card to write:", url);
+          console.log("Write requested:", url);
           await writeOnNextCard(url);
-          console.log("✅ Written.");
           res.writeHead(200, { "content-type": "application/json" });
           res.end(JSON.stringify({ status: "ok" }));
         } catch (e) {
-          console.error("Write failed:", e.message);
           res.writeHead(200, { "content-type": "application/json" });
           res.end(JSON.stringify({ status: "error", message: e.message }));
         }
@@ -159,6 +160,6 @@ http
   .listen(PORT, "127.0.0.1", () =>
     console.log(
       `ACR122U bridge running on http://127.0.0.1:${PORT}\n` +
-        "Leave this open. In the portal, open a card → 'USB Reader' tab → Write to card.",
+        "Leave this open. In the portal: card → 'USB Reader' tab → Write to card.",
     ),
   );

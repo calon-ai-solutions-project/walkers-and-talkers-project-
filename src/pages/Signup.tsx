@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Logo } from "@/components/Logo";
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -61,11 +62,11 @@ export default function Signup() {
         onSubmit={handleSubmit}
         className="w-full max-w-md bg-card p-8 rounded-2xl border shadow-sm space-y-5"
       >
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
+        <div className="text-center">
+          <Logo className="h-14 mx-auto mb-3 object-contain" />
+          <h1 className="text-xl font-bold text-foreground">
             Create your account
           </h1>
-          <p className="text-sm text-muted-foreground">Walkers &amp; Talkers</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="fullName">Full name</Label>

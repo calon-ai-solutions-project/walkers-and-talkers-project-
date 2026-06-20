@@ -1,5 +1,6 @@
 import { LayoutDashboard, MapPin, ScanLine, Users, UserPlus, BarChart3, AlertTriangle, Settings, CreditCard, Footprints } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
+import { Logo } from "@/components/Logo";
 import { useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -34,22 +35,18 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         <div className="p-4">
-          <div className="flex items-center gap-3 mb-2">
+          {!collapsed ? (
+            <div className="bg-white rounded-xl p-2.5 shadow-md mb-1">
+              <Logo className="h-14 w-full object-contain" />
+            </div>
+          ) : (
             <div
-              className="h-10 w-10 rounded-xl flex items-center justify-center shadow-lg shrink-0"
+              className="h-10 w-10 rounded-xl flex items-center justify-center shadow-lg"
               style={{ backgroundImage: "linear-gradient(135deg, hsl(43 80% 58%), hsl(38 90% 48%))" }}
             >
               <Footprints className="h-5 w-5 text-[hsl(228_72%_24%)]" />
             </div>
-            {!collapsed && (
-              <div>
-                <h2 className="text-base font-extrabold text-sidebar-foreground tracking-tight">
-                  Walkers &amp; Talkers
-                </h2>
-                <p className="text-xs text-sidebar-muted">Check-in &amp; welfare</p>
-              </div>
-            )}
-          </div>
+          )}
         </div>
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-muted text-xs uppercase tracking-wider">Navigation</SidebarGroupLabel>

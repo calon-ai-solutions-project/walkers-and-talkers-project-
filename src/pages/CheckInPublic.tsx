@@ -18,6 +18,7 @@ type CheckInResult = {
   first_name?: string;
   last_name?: string;
   member_no?: string;
+  phone?: string;
   region?: string;
   walk_day?: string;
 };
@@ -122,6 +123,14 @@ export default function CheckInPublic() {
                     </p>
                   </div>
                 </div>
+                {r.phone && (
+                  <div className="mt-4 pt-4 border-t border-white/15">
+                    <p className="text-white/60 text-sm">Phone</p>
+                    <a href={`tel:${r.phone}`} className="text-lg font-semibold">
+                      {r.phone}
+                    </a>
+                  </div>
+                )}
               </div>
             )}
           </>

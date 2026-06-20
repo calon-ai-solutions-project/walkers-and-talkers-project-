@@ -37,7 +37,27 @@ npm install
 - Windows: needs "Desktop development with C++" (Visual Studio Build Tools).
 - Linux: `sudo apt-get install build-essential libpcsclite-dev`.
 
-## 3. Get the card's URL from the app
+## ⭐ Easiest: the in-app "USB Reader" button
+
+Instead of running the writer per card, start the **bridge** once and use the
+portal's button:
+
+```bash
+cd tools/acr122u
+npm install      # one time
+npm start        # leave this window open
+```
+
+Then in the portal: open a card → **Program → "USB Reader" tab → "Write to card
+(USB reader)"** → hold a blank card on the ACR122U. It writes **and** marks the
+card active automatically. Keep the `npm start` window open while you program
+cards.
+
+(The button talks to `http://127.0.0.1:8899`, which the bridge serves locally.)
+
+---
+
+## 3. Get the card's URL from the app (manual writer)
 
 1. In the portal: **Members → a member → Issue new card** (or **Cards → Program**).
 2. On the Card Programmer, open the **Copy URL** tab and **copy** the URL

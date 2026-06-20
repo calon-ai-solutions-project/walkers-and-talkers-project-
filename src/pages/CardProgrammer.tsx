@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Smartphone, Link2, Check, Copy } from "lucide-react";
+import { ArrowLeft, Smartphone, Link2, Check, Copy, Usb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,6 +16,7 @@ export default function CardProgrammer() {
 
   const [status, setStatus] = useState<string | null>(null);
   const [writing, setWriting] = useState(false);
+  const [writingUsb, setWritingUsb] = useState(false);
   const [copied, setCopied] = useState(false);
   const [revokeOpen, setRevokeOpen] = useState(false);
 
@@ -63,6 +64,31 @@ export default function CardProgrammer() {
     setTimeout(() => setCopied(false), 1500);
   }
 
+  async function writeViaReader() {
+    setStatus("Connecting to your ACR122U… hold a blank card on the reader.");
+    setWritingUsb(true);
+    try {
+      const res = await fetch("http://127.0.0.1:8899/write", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const json = (await res.json()) as { status?: string; message?: string };
+      if (json.status === "ok") {
+        await activate.mutateAsync(card!.id);
+        setStatus(`✓ Written and activated for ${memberName}.`);
+      } else {
+        setStatus(`Write failed: ${json.message ?? "unknown error"}`);
+      }
+    } catch {
+      setStatus(
+        "Couldn't reach the local reader. In tools/acr122u run `npm install` then `npm start` (with the ACR122U plugged in), then try again.",
+      );
+    } finally {
+      setWritingUsb(false);
+    }
+  }
+
   return (
     <div className="max-w-2xl">
       <Button variant="ghost" className="mb-4 gap-2" onClick={() => navigate("/cards")}>
@@ -86,6 +112,9 @@ export default function CardProgrammer() {
           </TabsTrigger>
           <TabsTrigger value="url" className="gap-2">
             <Link2 className="h-4 w-4" /> Copy URL
+          </TabsTrigger>
+          <TabsTrigger value="usb" className="gap-2">
+            <Usb className="h-4 w-4" /> USB Reader
           </TabsTrigger>
         </TabsList>
 
@@ -130,6 +159,31 @@ export default function CardProgrammer() {
                 Mark card active
               </Button>
             )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="usb">
+          <div className="stat-card space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Use your <strong>ACR122U</strong> USB reader. First, on the computer
+              with the reader plugged in, run the bridge once:
+            </p>
+            <pre className="text-xs bg-muted rounded-lg p-3 overflow-x-auto">
+cd tools/acr122u
+npm install
+npm start
+            </pre>
+            <p className="text-sm text-muted-foreground">
+              Leave that window open, then click below and hold a blank card on
+              the reader.
+            </p>
+            <Button
+              onClick={writeViaReader}
+              disabled={writingUsb}
+              className="w-full h-16 text-base"
+            >
+              {writingUsb ? "Hold card on the reader…" : "Write to card (USB reader)"}
+            </Button>
           </div>
         </TabsContent>
       </Tabs>

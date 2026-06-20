@@ -23,10 +23,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-16 flex items-center justify-between border-b glass px-3 sm:px-6 sticky top-0 z-20">
+          <header
+            className="h-16 flex items-center justify-between border-b border-white/10 px-3 sm:px-6 sticky top-0 z-20 text-white shadow-md"
+            style={{ backgroundImage: "linear-gradient(135deg, #1e3a8a 0%, #4f46e5 100%)" }}
+          >
             <div className="flex items-center gap-2 min-w-0">
-              <SidebarTrigger />
-              <span className="text-sm sm:text-base font-extrabold tracking-tight gradient-text truncate">
+              <SidebarTrigger className="text-white hover:bg-white/15" />
+              <span className="text-sm sm:text-base font-extrabold tracking-tight truncate">
                 Walkers &amp; Talkers
               </span>
             </div>
@@ -34,30 +37,29 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               {user ? (
                 <>
                   <div className="text-right leading-tight hidden sm:block">
-                    <span className="block text-sm text-foreground">
-                      {displayName}
-                    </span>
+                    <span className="block text-sm">{displayName}</span>
                     {profile?.role && (
-                      <span className="block text-xs text-muted-foreground">
+                      <span className="block text-xs text-white/70">
                         {profile.role.replace("_", " ")}
                       </span>
                     )}
                   </div>
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                    <AvatarFallback className="bg-white text-primary text-xs font-bold">
                       {displayName ? initials(displayName) : "?"}
                     </AvatarFallback>
                   </Avatar>
                   <Button
                     variant="ghost"
                     size="sm"
+                    className="text-white hover:bg-white/15"
                     onClick={() => void signOut()}
                   >
                     Sign out
                   </Button>
                 </>
               ) : (
-                <span className="text-sm text-muted-foreground">Bristol</span>
+                <span className="text-sm text-white/80">Bristol</span>
               )}
             </div>
           </header>

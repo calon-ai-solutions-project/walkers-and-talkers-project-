@@ -101,19 +101,22 @@ export default function CheckIn() {
       )}
 
       {/* Live counter card */}
-      <div className="w-full max-w-md mb-8 rounded-3xl border bg-card shadow-lg p-6 flex items-center justify-center gap-5">
-        <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-          <Users className="h-7 w-7 text-primary" />
+      <div
+        className="w-full max-w-md mb-8 rounded-3xl shadow-xl p-6 flex items-center justify-center gap-5 text-white"
+        style={{ backgroundImage: "linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%)" }}
+      >
+        <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
+          <Users className="h-7 w-7 text-white" />
         </div>
         <div className="text-center">
-          <div className="text-6xl font-extrabold tracking-tight text-foreground leading-none">
+          <div className="text-6xl font-extrabold tracking-tight leading-none">
             {list.length}
           </div>
-          <div className="mt-1.5 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <div className="mt-1.5 flex items-center justify-center gap-2 text-sm text-white/85">
             <span
               className={
                 "h-2.5 w-2.5 rounded-full " +
-                (isOpen ? "bg-success animate-pulse-green" : "bg-muted-foreground/50")
+                (isOpen ? "bg-emerald-300 animate-pulse-green" : "bg-white/50")
               }
             />
             <span>{isOpen ? "checked in · live" : "checked in"}</span>

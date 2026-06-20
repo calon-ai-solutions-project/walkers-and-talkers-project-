@@ -1,4 +1,4 @@
-import { LayoutDashboard, MapPin, ScanLine, Users, UserPlus, BarChart3, AlertTriangle, Settings, CreditCard } from "lucide-react";
+import { LayoutDashboard, MapPin, ScanLine, Users, UserPlus, BarChart3, AlertTriangle, Settings, CreditCard, Footprints } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -34,17 +34,22 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         <div className="p-4">
-          {!collapsed && (
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-9 w-9 rounded-lg bg-sidebar-accent flex items-center justify-center">
-                <span className="text-sidebar-accent-foreground font-bold text-sm">MC</span>
-              </div>
+          <div className="flex items-center gap-3 mb-2">
+            <div
+              className="h-10 w-10 rounded-xl flex items-center justify-center shadow-lg shrink-0"
+              style={{ backgroundImage: "linear-gradient(135deg, hsl(43 80% 58%), hsl(38 90% 48%))" }}
+            >
+              <Footprints className="h-5 w-5 text-[hsl(228_72%_24%)]" />
+            </div>
+            {!collapsed && (
               <div>
-                <h2 className="text-sm font-bold text-sidebar-foreground">Walkers &amp; Talkers</h2>
+                <h2 className="text-base font-extrabold text-sidebar-foreground tracking-tight">
+                  Walkers &amp; Talkers
+                </h2>
                 <p className="text-xs text-sidebar-muted">Check-in &amp; welfare</p>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-muted text-xs uppercase tracking-wider">Navigation</SidebarGroupLabel>
@@ -56,11 +61,11 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end
-                      className="hover:bg-sidebar-accent/50 text-sidebar-foreground"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      className="rounded-xl px-3 py-2.5 my-0.5 text-sidebar-foreground/90 hover:bg-white/10 transition-colors"
+                      activeClassName="bg-white/15 text-white font-semibold ring-1 ring-white/15 shadow-sm"
                     >
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
+                      <item.icon className="mr-3 h-[18px] w-[18px]" />
+                      {!collapsed && <span className="text-[15px]">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

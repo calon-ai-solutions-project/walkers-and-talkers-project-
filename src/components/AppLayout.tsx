@@ -23,10 +23,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 flex items-center justify-between border-b bg-card px-4">
+          <header className="h-16 flex items-center justify-between border-b glass px-6 sticky top-0 z-20">
             <div className="flex items-center gap-3">
               <SidebarTrigger />
-              <span className="text-sm font-semibold text-foreground">
+              <span className="text-base font-extrabold tracking-tight gradient-text">
                 Walkers &amp; Talkers
               </span>
             </div>
@@ -61,7 +61,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               )}
             </div>
           </header>
-          <main className="flex-1 p-6 overflow-auto">{children}</main>
+          <main className="flex-1 overflow-auto">
+            <div className="max-w-6xl mx-auto p-6 md:p-8">{children}</div>
+          </main>
         </div>
       </div>
     </SidebarProvider>

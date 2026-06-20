@@ -1,0 +1,13 @@
+{
+  "name": "wt-acr122u-writer",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Write Walkers & Talkers check-in URLs to NTAG cards using an ACR122U reader.",
+  "scripts": {
+    "write": "node write-card.mjs"
+  },
+  "dependencies": {
+    "nfc-pcsc": "^0.8.1"
+  }
+}

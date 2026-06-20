@@ -98,7 +98,8 @@ export default function CardProgrammer() {
             {!nfcSupported && (
               <p className="text-sm text-warning">
                 This device/browser doesn&apos;t support Web NFC — use Android
-                Chrome, or the Copy URL tab.
+                Chrome, the <strong>Copy URL</strong> tab, or a USB reader
+                (ACR122U) with the writer in <code>tools/acr122u</code>.
               </p>
             )}
             <Button onClick={writeNfc} disabled={writing} className="w-full h-16 text-base">

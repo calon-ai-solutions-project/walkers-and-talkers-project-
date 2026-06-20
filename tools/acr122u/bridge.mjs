@@ -62,14 +62,33 @@ nfc.on("reader", (r) => {
 });
 nfc.on("error", (e) => console.error("NFC error:", e.message));
 
+function checkResp(resp, page) {
+  const hex = resp.toString("hex");
+  // ACR122U wraps the PN532 reply; success looks like ...D5 41 00... or ends 90 00
+  const okPn532 = resp.length >= 3 && resp.indexOf(Buffer.from([0xd5, 0x41, 0x00])) !== -1;
+  const ok9000 = resp.length >= 2 && resp[resp.length - 2] === 0x90 && resp[resp.length - 1] === 0x00;
+  if (!okPn532 && !ok9000) {
+    throw new Error(`page ${page} write rejected (resp ${hex})`);
+  }
+}
+
 function writeOnNextCard(url, timeoutMs = 30000) {
   return new Promise((resolve, reject) => {
     if (!reader) return reject(new Error("No ACR122U reader connected"));
     const data = buildNdefUriTlv(url);
     const onCard = async () => {
       try {
+        // Write 4 bytes per page using the NTAG WRITE (0xA2) command sent
+        // directly via the PN532 InDataExchange (D4 40 01) — reliable on ACR122U.
         for (let i = 0; i < data.length; i += 4) {
-          await reader.write(4 + i / 4, data.slice(i, i + 4), 4);
+          const page = 4 + i / 4;
+          const four = data.slice(i, i + 4);
+          const apdu = Buffer.concat([
+            Buffer.from([0xff, 0x00, 0x00, 0x00, 0x07, 0xd4, 0x40, 0x01, 0xa2, page]),
+            four,
+          ]);
+          const resp = await reader.transmit(apdu, 40);
+          checkResp(resp, page);
         }
         cleanup();
         resolve();

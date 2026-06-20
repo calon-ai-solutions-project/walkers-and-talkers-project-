@@ -66,10 +66,18 @@ nfc.on("reader", (reader) => {
 
   reader.on("card", async () => {
     try {
-      const startPage = 4; // user memory on NTAG21x starts at page 4
+      // NTAG WRITE (0xA2) via PN532 InDataExchange — reliable on ACR122U.
       for (let i = 0; i < data.length; i += 4) {
-        const page = startPage + i / 4;
-        await reader.write(page, data.slice(i, i + 4), 4);
+        const page = 4 + i / 4;
+        const apdu = Buffer.concat([
+          Buffer.from([0xff, 0x00, 0x00, 0x00, 0x07, 0xd4, 0x40, 0x01, 0xa2, page]),
+          data.slice(i, i + 4),
+        ]);
+        const resp = await reader.transmit(apdu, 40);
+        const ok =
+          resp.indexOf(Buffer.from([0xd5, 0x41, 0x00])) !== -1 ||
+          (resp[resp.length - 2] === 0x90 && resp[resp.length - 1] === 0x00);
+        if (!ok) throw new Error(`page ${page} rejected (${resp.toString("hex")})`);
       }
       console.log("✅ Card written. Remove it. (Now mark it active in the app.)");
     } catch (e) {

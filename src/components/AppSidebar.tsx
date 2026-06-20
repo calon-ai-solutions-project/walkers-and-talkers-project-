@@ -36,8 +36,8 @@ export function AppSidebar() {
       <SidebarContent>
         <div className="p-4">
           {!collapsed ? (
-            <div className="bg-white rounded-xl p-2.5 shadow-md mb-1">
-              <Logo className="h-14 w-full object-contain" />
+            <div className="bg-white rounded-2xl p-4 shadow-xl ring-1 ring-black/5 mb-1">
+              <Logo className="h-24 w-full object-contain" />
             </div>
           ) : (
             <div

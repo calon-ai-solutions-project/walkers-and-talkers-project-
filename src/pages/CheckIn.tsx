@@ -79,27 +79,46 @@ export default function CheckIn() {
       </div>
 
       {!isOpen && (
-        <div className="w-full max-w-md bg-muted rounded-2xl p-6 mb-8 text-center">
-          <p className="text-sm text-muted-foreground">
+        <div
+          className={
+            "w-full max-w-md rounded-2xl p-5 mb-8 text-center border shadow-sm " +
+            (session?.cancelled
+              ? "bg-destructive/10 border-destructive/25 text-destructive"
+              : "bg-warning/10 border-warning/30 text-amber-700")
+          }
+        >
+          <p className="text-sm font-semibold">
             {session?.cancelled
-              ? "Today's walk is cancelled."
-              : "Check-in isn't open yet. Open today's walk from the Bristol dashboard."}
+              ? "Today's walk is cancelled"
+              : "Check-in isn't open yet"}
           </p>
+          {!session?.cancelled && (
+            <p className="text-xs mt-1 opacity-80">
+              Open today's walk from the Bristol dashboard to start.
+            </p>
+          )}
         </div>
       )}
 
-      <div className="flex items-center gap-3 mb-8">
-        <div
-          className={
-            "h-3 w-3 rounded-full " +
-            (isOpen ? "bg-success animate-pulse-green" : "bg-muted-foreground")
-          }
-        />
-        <div className="flex items-baseline gap-2">
-          <span className="text-5xl font-extrabold text-foreground">{list.length}</span>
-          <span className="text-xl text-muted-foreground">checked in</span>
+      {/* Live counter card */}
+      <div className="w-full max-w-md mb-8 rounded-3xl border bg-card shadow-lg p-6 flex items-center justify-center gap-5">
+        <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+          <Users className="h-7 w-7 text-primary" />
         </div>
-        <Users className="h-6 w-6 text-muted-foreground ml-2" />
+        <div className="text-center">
+          <div className="text-6xl font-extrabold tracking-tight text-foreground leading-none">
+            {list.length}
+          </div>
+          <div className="mt-1.5 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <span
+              className={
+                "h-2.5 w-2.5 rounded-full " +
+                (isOpen ? "bg-success animate-pulse-green" : "bg-muted-foreground/50")
+              }
+            />
+            <span>{isOpen ? "checked in · live" : "checked in"}</span>
+          </div>
+        </div>
       </div>
 
       {last && (

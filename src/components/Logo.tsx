@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Footprints } from "lucide-react";
 
-/**
- * Renders the brand logo from /logo.png (place your file at public/logo.png).
- * Falls back to a gold footprints mark + wordmark until the image is added,
- * so the UI never breaks.
- */
+// Tries these public/ files in order, so the logo shows whether it's uploaded
+// as logo.png or with its original name.
+const SOURCES = [
+  "/logo.png",
+  "/W%26T%20Logo%202026.png", // "W&T Logo 2026.png" url-encoded
+  "/wt-logo.png",
+];
+
 export function Logo({
   className,
   showWordmarkFallback = true,
@@ -13,7 +16,8 @@ export function Logo({
   className?: string;
   showWordmarkFallback?: boolean;
 }) {
-  const [failed, setFailed] = useState(false);
+  const [idx, setIdx] = useState(0);
+  const failed = idx >= SOURCES.length;
 
   if (failed) {
     return (
@@ -38,9 +42,9 @@ export function Logo({
 
   return (
     <img
-      src="/logo.png"
+      src={SOURCES[idx]}
       alt="Walkers & Talkers"
-      onError={() => setFailed(true)}
+      onError={() => setIdx((i) => i + 1)}
       className={className}
     />
   );

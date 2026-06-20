@@ -13,11 +13,11 @@ const TABS: { value: CardState; label: string }[] = [
   { value: "revoked", label: "Revoked" },
 ];
 
-const stateVariant: Record<CardState, "default" | "secondary" | "destructive" | "outline"> = {
-  active: "default",
-  pending: "secondary",
-  lost: "outline",
-  revoked: "destructive",
+const statePill: Record<CardState, string> = {
+  active: "bg-emerald-100 text-emerald-700",
+  pending: "bg-amber-100 text-amber-700",
+  lost: "bg-slate-100 text-slate-600",
+  revoked: "bg-rose-100 text-rose-700",
 };
 
 export default function Cards() {
@@ -39,9 +39,13 @@ export default function Cards() {
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as CardState)} className="mb-4">
-        <TabsList>
+        <TabsList className="h-11 p-1 rounded-xl bg-secondary">
           {TABS.map((t) => (
-            <TabsTrigger key={t.value} value={t.value}>
+            <TabsTrigger
+              key={t.value}
+              value={t.value}
+              className="rounded-lg px-4 data-[state=active]:bg-primary data-[state=active]:text-white"
+            >
               {t.label} ({(cards ?? []).filter((c) => c.state === t.value).length})
             </TabsTrigger>
           ))}
@@ -76,7 +80,14 @@ export default function Cards() {
                   </td>
                   <td className="py-3 px-4 font-mono text-muted-foreground">{c.token}</td>
                   <td className="py-3 px-4">
-                    <Badge variant={stateVariant[c.state]}>{c.state}</Badge>
+                    <span
+                      className={
+                        "px-3 py-1 rounded-full text-xs font-semibold capitalize " +
+                        statePill[c.state]
+                      }
+                    >
+                      {c.state}
+                    </span>
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center justify-end gap-2">

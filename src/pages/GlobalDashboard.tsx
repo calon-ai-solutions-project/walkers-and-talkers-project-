@@ -9,8 +9,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
 } from "recharts";
 import { useBristolRegion, useMembers } from "@/hooks/useMembers";
 import { useRecentSessions } from "@/hooks/useSessions";
@@ -82,13 +82,19 @@ export default function GlobalDashboard() {
           {attendanceBySession.length === 0 ? (
             <p className="text-muted-foreground text-sm">No sessions yet.</p>
           ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={attendanceBySession}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 20% 90%)" />
-                <XAxis dataKey="name" tick={{ fontSize: 12, fill: "hsl(220 10% 45%)" }} />
-                <YAxis tick={{ fontSize: 12, fill: "hsl(220 10% 45%)" }} allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="attendance" fill="hsl(228 72% 36%)" radius={[6, 6, 0, 0]} />
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={attendanceBySession} barCategoryGap="30%">
+                <defs>
+                  <linearGradient id="barBlue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" />
+                    <stop offset="100%" stopColor="#1e3a8a" />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="4 4" stroke="hsl(220 22% 92%)" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 12, fill: "hsl(220 10% 45%)" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: "hsl(220 10% 45%)" }} allowDecimals={false} axisLine={false} tickLine={false} width={28} />
+                <Tooltip cursor={{ fill: "hsl(228 72% 36% / 0.06)" }} contentStyle={{ borderRadius: 12, border: "1px solid hsl(220 20% 90%)" }} />
+                <Bar dataKey="attendance" fill="url(#barBlue)" radius={[10, 10, 0, 0]} maxBarSize={52} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -98,14 +104,20 @@ export default function GlobalDashboard() {
           {membershipGrowth.length === 0 ? (
             <p className="text-muted-foreground text-sm">No members yet.</p>
           ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={membershipGrowth}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 20% 90%)" />
-                <XAxis dataKey="month" tick={{ fontSize: 12, fill: "hsl(220 10% 45%)" }} />
-                <YAxis tick={{ fontSize: 12, fill: "hsl(220 10% 45%)" }} allowDecimals={false} />
-                <Tooltip />
-                <Line type="monotone" dataKey="members" stroke="hsl(228 72% 36%)" strokeWidth={2.5} dot={{ fill: "hsl(228 72% 36%)" }} />
-              </LineChart>
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={membershipGrowth}>
+                <defs>
+                  <linearGradient id="areaViolet" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.45} />
+                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="4 4" stroke="hsl(220 22% 92%)" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 12, fill: "hsl(220 10% 45%)" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: "hsl(220 10% 45%)" }} allowDecimals={false} axisLine={false} tickLine={false} width={28} />
+                <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(220 20% 90%)" }} />
+                <Area type="monotone" dataKey="members" stroke="#7c3aed" strokeWidth={3} fill="url(#areaViolet)" dot={{ fill: "#7c3aed", r: 4 }} />
+              </AreaChart>
             </ResponsiveContainer>
           )}
         </div>

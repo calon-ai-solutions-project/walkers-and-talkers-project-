@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Download, CalendarDays, Users, BarChart3, Trophy } from "lucide-react";
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -85,13 +85,19 @@ export default function Reports() {
           <p className="text-muted-foreground">No sessions held yet.</p>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={report!.trend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 20% 90%)" />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: "hsl(220 10% 45%)" }} />
-              <YAxis tick={{ fontSize: 11, fill: "hsl(220 10% 45%)" }} allowDecimals={false} />
-              <Tooltip />
-              <Line type="monotone" dataKey="attendance" stroke="hsl(228 72% 36%)" strokeWidth={2.5} dot={{ fill: "hsl(228 72% 36%)" }} />
-            </LineChart>
+            <AreaChart data={report!.trend}>
+              <defs>
+                <linearGradient id="areaBlue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.45} />
+                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="4 4" stroke="hsl(220 22% 92%)" vertical={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: "hsl(220 10% 45%)" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: "hsl(220 10% 45%)" }} allowDecimals={false} axisLine={false} tickLine={false} width={28} />
+              <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(220 20% 90%)" }} />
+              <Area type="monotone" dataKey="attendance" stroke="#1e40af" strokeWidth={3} fill="url(#areaBlue)" dot={{ fill: "#1e40af", r: 4 }} />
+            </AreaChart>
           </ResponsiveContainer>
         )}
       </div>

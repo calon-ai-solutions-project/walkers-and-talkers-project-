@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Search, CheckCircle2, Users, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useBristolRegion, useMembers } from "@/hooks/useMembers";
 import {
   useTodaySession,
@@ -46,7 +47,10 @@ export default function CheckIn() {
   }, [search, members]);
 
   async function checkIn(memberId: string, name: string) {
-    if (!session) return;
+    if (!session || !isOpen) {
+      setFlash("Open today's walk from the Bristol dashboard before checking people in.");
+      return;
+    }
     try {
       const res = await manual.mutateAsync({ memberId, sessionId: session.id });
       setFlash(
@@ -148,39 +152,62 @@ export default function CheckIn() {
         )}
       </div>
 
-      {/* Manual / by-name check-in */}
-      <div className="w-full max-w-md mb-12">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Forgot their card? Search by name…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            disabled={!isOpen}
-            className="pl-10 h-12 text-base"
-          />
-        </div>
-        {flash && <p className="text-sm text-success mt-2">{flash}</p>}
-        {matches.length > 0 && (
-          <ul className="mt-2 border rounded-lg divide-y bg-card">
-            {matches.map((m) => (
-              <li key={m.id} className="flex items-center justify-between p-3">
-                <span className="text-sm">
-                  {m.first_name} {m.last_name ?? ""}
-                </span>
-                <button
-                  className="text-sm px-3 py-1 rounded-md bg-primary text-primary-foreground disabled:opacity-50"
-                  disabled={manual.isPending}
-                  onClick={() =>
-                    void checkIn(m.id, `${m.first_name} ${m.last_name ?? ""}`.trim())
-                  }
+      {/* Manual / by-name check-in — branded blue panel */}
+      <div className="w-full max-w-lg mb-12">
+        <div
+          className="rounded-3xl p-6 border border-primary/20 shadow-xl"
+          style={{
+            backgroundImage:
+              "linear-gradient(135deg, hsl(228 72% 97%), hsl(248 70% 96%))",
+          }}
+        >
+          <h3 className="text-sm font-bold text-primary uppercase tracking-wider mb-3">
+            Forgot a card? Check in by name
+          </h3>
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/60" />
+            <Input
+              placeholder="Start typing a member's name…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-12 h-14 text-base rounded-2xl border-primary/30 bg-white shadow-sm focus-visible:ring-primary"
+            />
+          </div>
+
+          {flash && (
+            <p className="text-sm text-primary mt-3 font-medium">{flash}</p>
+          )}
+
+          {matches.length > 0 && (
+            <ul className="mt-3 rounded-2xl border border-primary/15 divide-y divide-primary/10 bg-white overflow-hidden shadow-sm">
+              {matches.map((m) => (
+                <li
+                  key={m.id}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-primary/5 transition-colors"
                 >
-                  Check in
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+                  <span className="text-sm font-medium text-foreground">
+                    {m.first_name} {m.last_name ?? ""}
+                  </span>
+                  <Button
+                    size="sm"
+                    disabled={manual.isPending}
+                    onClick={() =>
+                      void checkIn(m.id, `${m.first_name} ${m.last_name ?? ""}`.trim())
+                    }
+                  >
+                    Check in
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {search.trim().length >= 2 && matches.length === 0 && (
+            <p className="text-sm text-muted-foreground mt-3">
+              No members match “{search}”.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

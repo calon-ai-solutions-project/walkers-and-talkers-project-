@@ -4,6 +4,7 @@ import { StatCard } from "@/components/StatCard";
 import {
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -12,6 +13,8 @@ import {
   AreaChart,
   Area,
 } from "recharts";
+
+const BAR_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#f43f5e", "#06b6d4"];
 import { useBristolRegion, useMembers } from "@/hooks/useMembers";
 import { useRecentSessions } from "@/hooks/useSessions";
 
@@ -83,18 +86,16 @@ export default function GlobalDashboard() {
             <p className="text-muted-foreground text-sm">No sessions yet.</p>
           ) : (
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={attendanceBySession} barCategoryGap="30%">
-                <defs>
-                  <linearGradient id="barBlue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" />
-                    <stop offset="100%" stopColor="#1e3a8a" />
-                  </linearGradient>
-                </defs>
+              <BarChart data={attendanceBySession} barCategoryGap="28%">
                 <CartesianGrid strokeDasharray="4 4" stroke="hsl(220 22% 92%)" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 12, fill: "hsl(220 10% 45%)" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 12, fill: "hsl(220 10% 45%)" }} allowDecimals={false} axisLine={false} tickLine={false} width={28} />
                 <Tooltip cursor={{ fill: "hsl(228 72% 36% / 0.06)" }} contentStyle={{ borderRadius: 12, border: "1px solid hsl(220 20% 90%)" }} />
-                <Bar dataKey="attendance" fill="url(#barBlue)" radius={[10, 10, 0, 0]} maxBarSize={52} />
+                <Bar dataKey="attendance" radius={[8, 8, 0, 0]} maxBarSize={48}>
+                  {attendanceBySession.map((_, i) => (
+                    <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}

@@ -1,27 +1,40 @@
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 
+export type StatColor =
+  | "blue"
+  | "green"
+  | "violet"
+  | "red"
+  | "amber"
+  | "cyan";
+
+type Variant = "default" | "success" | "destructive" | "warning";
+
 interface StatCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
   icon?: LucideIcon;
-  variant?: "default" | "success" | "destructive" | "warning";
+  variant?: Variant;
+  color?: StatColor;
   className?: string;
 }
 
-const accentBar = {
-  default: "before:bg-primary",
-  success: "before:bg-success",
-  destructive: "before:bg-destructive",
-  warning: "before:bg-warning",
+const GRADIENT: Record<StatColor, string> = {
+  blue: "linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%)",
+  green: "linear-gradient(135deg, #10b981 0%, #047857 100%)",
+  violet: "linear-gradient(135deg, #8b5cf6 0%, #5b21b6 100%)",
+  red: "linear-gradient(135deg, #fb7185 0%, #be123c 100%)",
+  amber: "linear-gradient(135deg, #f59e0b 0%, #b45309 100%)",
+  cyan: "linear-gradient(135deg, #22d3ee 0%, #0e7490 100%)",
 };
 
-const iconChip = {
-  default: "bg-primary/10 text-primary",
-  success: "bg-success/10 text-success",
-  destructive: "bg-destructive/10 text-destructive",
-  warning: "bg-warning/10 text-warning",
+const VARIANT_TO_COLOR: Record<Variant, StatColor> = {
+  default: "blue",
+  success: "green",
+  warning: "amber",
+  destructive: "red",
 };
 
 export function StatCard({
@@ -30,35 +43,29 @@ export function StatCard({
   subtitle,
   icon: Icon,
   variant = "default",
+  color,
   className,
 }: StatCardProps) {
+  const palette = color ?? VARIANT_TO_COLOR[variant];
   return (
     <div
       className={cn(
-        "stat-card relative overflow-hidden",
-        "before:content-[''] before:absolute before:left-0 before:top-0 before:h-full before:w-1.5",
-        accentBar[variant],
+        "rounded-2xl p-6 text-white shadow-lg elevate overflow-hidden",
         className,
       )}
+      style={{ backgroundImage: GRADIENT[palette] }}
     >
-      <div className="flex items-start justify-between gap-3 pl-1.5">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm text-muted-foreground font-medium">{title}</p>
-          <p className="text-4xl font-extrabold mt-1 tracking-tight text-foreground">
-            {value}
-          </p>
+          <p className="text-sm font-medium text-white/85">{title}</p>
+          <p className="text-4xl font-extrabold mt-1 tracking-tight">{value}</p>
           {subtitle && (
-            <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+            <p className="text-xs text-white/80 mt-1">{subtitle}</p>
           )}
         </div>
         {Icon && (
-          <div
-            className={cn(
-              "h-12 w-12 rounded-xl flex items-center justify-center shadow-sm",
-              iconChip[variant],
-            )}
-          >
-            <Icon className="h-6 w-6" />
+          <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shadow-inner">
+            <Icon className="h-6 w-6 text-white" />
           </div>
         )}
       </div>

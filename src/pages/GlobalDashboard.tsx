@@ -70,10 +70,10 @@ export default function GlobalDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard title="Total Members" value={String(total)} subtitle="Bristol" icon={Users} />
-        <StatCard title="Latest Session" value={String(latestSession)} subtitle="Attended" icon={CalendarDays} variant="success" />
-        <StatCard title="Active Locations" value="1" subtitle="Bristol (v1)" icon={MapPin} />
-        <StatCard title="New This Month" value={String(newThisMonth)} subtitle="Registrations" icon={TrendingUp} variant="success" />
+        <StatCard title="Total Members" value={String(total)} subtitle="Bristol" icon={Users} color="blue" />
+        <StatCard title="Latest Session" value={String(latestSession)} subtitle="Attended" icon={CalendarDays} color="green" />
+        <StatCard title="Active Locations" value="1" subtitle="Bristol (v1)" icon={MapPin} color="violet" />
+        <StatCard title="New This Month" value={String(newThisMonth)} subtitle="Registrations" icon={TrendingUp} color="amber" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

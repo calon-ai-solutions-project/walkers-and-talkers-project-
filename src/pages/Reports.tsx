@@ -71,10 +71,10 @@ export default function Reports() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard title="Total Sessions" value={String(report?.totalSessions ?? 0)} icon={CalendarDays} />
-        <StatCard title="Total Attendances" value={String(report?.totalAttendances ?? 0)} icon={Users} />
-        <StatCard title="Unique Members" value={String(report?.uniqueMembers ?? 0)} icon={Users} />
-        <StatCard title="Avg Per Session" value={String(report?.avgPerSession ?? 0)} icon={BarChart3} />
+        <StatCard title="Total Sessions" value={String(report?.totalSessions ?? 0)} icon={CalendarDays} color="blue" />
+        <StatCard title="Total Attendances" value={String(report?.totalAttendances ?? 0)} icon={Users} color="green" />
+        <StatCard title="Unique Members" value={String(report?.uniqueMembers ?? 0)} icon={Users} color="violet" />
+        <StatCard title="Avg Per Session" value={String(report?.avgPerSession ?? 0)} icon={BarChart3} color="amber" />
       </div>
 
       <div className="stat-card mb-8">

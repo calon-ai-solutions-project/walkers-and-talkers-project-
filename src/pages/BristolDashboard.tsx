@@ -75,24 +75,25 @@ export default function BristolDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard title="Total Members" value={String(total)} icon={Users} />
+        <StatCard title="Total Members" value={String(total)} icon={Users} color="blue" />
         <StatCard
           title="Present Today"
           value={String(presentToday)}
           icon={CalendarDays}
-          variant="success"
+          color="green"
         />
         <StatCard
           title="Sessions This Month"
           value={String(sessionsThisMonth)}
           icon={Clock}
+          color="violet"
         />
         <StatCard
           title="Not Seen 8+ Weeks"
           value={String(notSeen)}
           subtitle="Needs attention"
           icon={AlertTriangle}
-          variant="destructive"
+          color="red"
         />
       </div>
 
@@ -173,7 +174,14 @@ export default function BristolDashboard() {
                 <span className="text-sm font-medium text-foreground">
                   {fmtDate(s.date)}
                 </span>
-                <span className="text-sm text-muted-foreground">
+                <span
+                  className={
+                    "text-xs font-semibold px-3 py-1 rounded-full " +
+                    (s.cancelled
+                      ? "bg-destructive/10 text-destructive"
+                      : "bg-primary/10 text-primary")
+                  }
+                >
                   {s.cancelled ? "cancelled" : `${s.attended} attended`}
                 </span>
               </div>
@@ -183,13 +191,13 @@ export default function BristolDashboard() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Button onClick={() => navigate("/")} className="gap-2">
+        <Button onClick={() => navigate("/")} className="gap-2 text-white border-0 shadow-lg" style={{ backgroundImage: "linear-gradient(135deg, #3b82f6, #1e3a8a)" }}>
           <ScanLine className="h-4 w-4" /> Start Check-In
         </Button>
-        <Button variant="outline" onClick={() => navigate("/members/new")} className="gap-2">
+        <Button onClick={() => navigate("/members/new")} className="gap-2 text-white border-0 shadow-lg" style={{ backgroundImage: "linear-gradient(135deg, #10b981, #047857)" }}>
           <UserPlus className="h-4 w-4" /> Add Member
         </Button>
-        <Button variant="outline" onClick={() => navigate("/reports")} className="gap-2">
+        <Button onClick={() => navigate("/reports")} className="gap-2 text-white border-0 shadow-lg" style={{ backgroundImage: "linear-gradient(135deg, #8b5cf6, #5b21b6)" }}>
           <BarChart3 className="h-4 w-4" /> View Reports
         </Button>
       </div>

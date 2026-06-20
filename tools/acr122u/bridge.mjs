@@ -50,10 +50,50 @@ function buildNdefUriTlv(fullUrl) {
 }
 
 let reader = null;
+let pending = null; // { data, resolve, reject, timer }
+
+function checkResp(resp, page) {
+  const hex = resp.toString("hex");
+  const okPn532 = resp.indexOf(Buffer.from([0xd5, 0x41, 0x00])) !== -1;
+  const ok9000 = resp.length >= 2 && resp[resp.length - 2] === 0x90 && resp[resp.length - 1] === 0x00;
+  if (!okPn532 && !ok9000) throw new Error(`page ${page} write rejected (resp ${hex})`);
+}
+
+async function writeCard(card) {
+  if (!pending) {
+    console.log(
+      `Card detected (${card?.uid ?? "no-uid"}) but no write requested yet — ` +
+        "click 'Write to card' in the app first, then tap.",
+    );
+    return;
+  }
+  const { data, resolve, reject, timer } = pending;
+  pending = null;
+  clearTimeout(timer);
+  try {
+    console.log(`Card detected (${card?.uid ?? "no-uid"}) — writing ${data.length} bytes…`);
+    for (let i = 0; i < data.length; i += 4) {
+      const page = 4 + i / 4;
+      const apdu = Buffer.concat([
+        Buffer.from([0xff, 0x00, 0x00, 0x00, 0x07, 0xd4, 0x40, 0x01, 0xa2, page]),
+        data.slice(i, i + 4),
+      ]);
+      const resp = await reader.transmit(apdu, 40);
+      checkResp(resp, page);
+    }
+    console.log("✅ Written.");
+    resolve();
+  } catch (e) {
+    console.error("❌ Write failed:", e.message);
+    reject(e);
+  }
+}
+
 const nfc = new NFC();
 nfc.on("reader", (r) => {
   reader = r;
   console.log(`Reader connected: ${r.reader.name}`);
+  r.on("card", (card) => void writeCard(card));
   r.on("end", () => {
     if (reader === r) reader = null;
     console.log("Reader removed.");
@@ -62,50 +102,16 @@ nfc.on("reader", (r) => {
 });
 nfc.on("error", (e) => console.error("NFC error:", e.message));
 
-function checkResp(resp, page) {
-  const hex = resp.toString("hex");
-  // ACR122U wraps the PN532 reply; success looks like ...D5 41 00... or ends 90 00
-  const okPn532 = resp.length >= 3 && resp.indexOf(Buffer.from([0xd5, 0x41, 0x00])) !== -1;
-  const ok9000 = resp.length >= 2 && resp[resp.length - 2] === 0x90 && resp[resp.length - 1] === 0x00;
-  if (!okPn532 && !ok9000) {
-    throw new Error(`page ${page} write rejected (resp ${hex})`);
-  }
-}
-
-function writeOnNextCard(url, timeoutMs = 30000) {
+function writeOnNextCard(url, timeoutMs = 40000) {
   return new Promise((resolve, reject) => {
     if (!reader) return reject(new Error("No ACR122U reader connected"));
     const data = buildNdefUriTlv(url);
-    const onCard = async () => {
-      try {
-        // Write 4 bytes per page using the NTAG WRITE (0xA2) command sent
-        // directly via the PN532 InDataExchange (D4 40 01) — reliable on ACR122U.
-        for (let i = 0; i < data.length; i += 4) {
-          const page = 4 + i / 4;
-          const four = data.slice(i, i + 4);
-          const apdu = Buffer.concat([
-            Buffer.from([0xff, 0x00, 0x00, 0x00, 0x07, 0xd4, 0x40, 0x01, 0xa2, page]),
-            four,
-          ]);
-          const resp = await reader.transmit(apdu, 40);
-          checkResp(resp, page);
-        }
-        cleanup();
-        resolve();
-      } catch (e) {
-        cleanup();
-        reject(e);
-      }
-    };
     const timer = setTimeout(() => {
-      cleanup();
-      reject(new Error("Timed out — no card detected. Hold a card on the reader."));
+      pending = null;
+      reject(new Error("Timed out — no card tapped. Click Write, THEN place the card (lift & retap if it was already on the reader)."));
     }, timeoutMs);
-    function cleanup() {
-      clearTimeout(timer);
-      reader?.off("card", onCard);
-    }
-    reader.on("card", onCard);
+    pending = { data, resolve, reject, timer };
+    console.log("Ready — tap a blank NTAG card on the reader now.");
   });
 }
 

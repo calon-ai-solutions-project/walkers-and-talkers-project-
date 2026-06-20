@@ -87,9 +87,12 @@ export default function CheckInPublic() {
       style={{ background: NAVY_GRADIENT }}
     >
       {/* Branded logo */}
-      <div className="bg-white rounded-2xl p-3 shadow-xl w-44 mb-10">
-        <Logo className="h-12 w-full object-contain" showWordmarkFallback={false} />
+      <div className="bg-white rounded-2xl p-4 shadow-xl w-64 max-w-[80%] mb-6">
+        <Logo className="h-20 w-full object-contain" showWordmarkFallback={false} />
       </div>
+      <p className="text-xs uppercase tracking-[0.25em] text-white/60 mb-6">
+        Thank you for tapping in
+      </p>
 
       <div className="flex-1 flex flex-col items-center justify-center w-full max-w-sm text-center">
         {loading ? (

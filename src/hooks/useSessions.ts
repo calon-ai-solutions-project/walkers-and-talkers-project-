@@ -58,12 +58,13 @@ export function useSessionAttendees(sessionId?: string) {
       return (rows ?? []).map((r) => {
         const m = byId.get(r.member_id);
         return {
+          member_id: r.member_id,
           name: m ? `${m.first_name} ${m.last_name ?? ""}`.trim() : "Member",
           time: r.checked_in_at,
         };
       });
     },
-    refetchInterval: 15000,
+    refetchInterval: 10000,
   });
 }
 

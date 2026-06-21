@@ -84,6 +84,27 @@ A one-liner per decision so future-you remembers *why*. Append, don't rewrite.
   a present member. Driven from the Sessions page member search (`members_safe`,
   so no health_notes exposure).
 
+## Roles & volunteer experience
+
+- **Three roles** (`profiles.role`): `super_admin` (all regions/data), `regional_admin`
+  (one region's walks/members/welfare), `volunteer` (check members in only; sees
+  no personal data beyond names via `members_safe`).
+- **Volunteers get a dedicated kiosk** at `/walk` (`VolunteerShell` + `VolunteerCheckIn`)
+  — no sidebar, no links elsewhere. After sign-in, the admin shell
+  (`RequireAuthLayout`) bounces any `volunteer` to `/walk`, and a volunteer typing
+  an admin URL (`/members`, `/settings`, …) is redirected there too. Admins can
+  open `/walk` to preview it.
+- **`manual_check_in` already allows volunteers** for their assigned region
+  (role check includes `volunteer`; region-scoped). No new migration was needed.
+  RLS already lets volunteers read their region's `members_safe` + sessions +
+  attendance, so the kiosk works with the anon/auth client and no service key.
+- **Bristol-only v1:** assigning `regional_admin`/`volunteer` auto-sets their
+  `region_id` to Bristol; `super_admin` spans all regions (`region_id` null).
+- **Settings** is super_admin only. Name field binds to `profiles.full_name`
+  (not email). Auth is email+password here (not magic link), so the profile shows
+  "email & password" and keeps Change Password; new-admin invite still uses a
+  magic link to onboard, after which the super_admin sets their role.
+
 ## Open decisions (resolve before launch)
 
 - Live domain: `walkersandtalkers.org` vs `.org.uk` (currently using `.org`

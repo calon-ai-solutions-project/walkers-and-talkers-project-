@@ -9,10 +9,41 @@ export function useProfiles() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, email, full_name, role, region_id")
-        .order("email");
+        .select("id, email, full_name, role, region_id, created_at")
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return data ?? [];
+    },
+  });
+}
+
+export function useUpdateProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (values: { full_name: string }) => {
+      const { data: u } = await supabase.auth.getUser();
+      const id = u.user?.id;
+      if (!id) throw new Error("Not signed in");
+      const { error } = await supabase
+        .from("profiles")
+        .update({ full_name: values.full_name })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profiles"] });
+    },
+  });
+}
+
+export function useInviteAdmin() {
+  return useMutation({
+    mutationFn: async (email: string) => {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim().toLowerCase(),
+        options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+      });
+      if (error) throw error;
     },
   });
 }
@@ -21,9 +52,20 @@ export function useUpdateRole() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, role }: { id: string; role: Role }) => {
+      // Bristol-only v1: regional_admin/volunteer get the Bristol region;
+      // super_admin spans all regions (null).
+      let region_id: string | null = null;
+      if (role !== "super_admin") {
+        const { data: r } = await supabase
+          .from("regions")
+          .select("id")
+          .eq("slug", "bristol")
+          .single();
+        region_id = r?.id ?? null;
+      }
       const { error } = await supabase
         .from("profiles")
-        .update({ role })
+        .update({ role, region_id })
         .eq("id", id);
       if (error) throw error;
     },

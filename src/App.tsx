@@ -25,20 +25,33 @@ import EngagementAlerts from "./pages/EngagementAlerts";
 import Settings from "./pages/Settings";
 import Cards from "./pages/Cards";
 import CardProgrammer from "./pages/CardProgrammer";
+import VolunteerCheckIn from "./pages/VolunteerCheckIn";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function RequireAuthLayout() {
+function Loading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center text-muted-foreground">
+      Loading…
+    </div>
+  );
+}
+
+// Any signed-in user (used for /walk so admins can preview it too).
+function AuthGate({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-muted-foreground">
-        Loading…
-      </div>
-    );
-  }
+  if (loading) return <Loading />;
   if (!session) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+// Admin shell — volunteers are bounced to /walk and never see it.
+function RequireAuthLayout() {
+  const { session, profile, loading } = useAuth();
+  if (loading) return <Loading />;
+  if (!session) return <Navigate to="/login" replace />;
+  if (profile?.role === "volunteer") return <Navigate to="/walk" replace />;
   return (
     <AppLayout>
       <Outlet />
@@ -58,6 +71,16 @@ const App = () => (
             <Route path="/c/:token" element={<CheckInPublic />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+
+            {/* Volunteer kiosk (its own shell; admins can preview it) */}
+            <Route
+              path="/walk"
+              element={
+                <AuthGate>
+                  <VolunteerCheckIn />
+                </AuthGate>
+              }
+            />
 
             {/* Admin portal — sign-in required (data is protected by RLS) */}
             <Route element={<RequireAuthLayout />}>

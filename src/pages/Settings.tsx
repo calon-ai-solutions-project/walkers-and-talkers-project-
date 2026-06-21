@@ -18,6 +18,8 @@ import {
   useUpdateRegion,
   useClaimAdmin,
   useChangePassword,
+  useUpdateProfile,
+  useInviteAdmin,
   type Role,
 } from "@/hooks/useSettings";
 
@@ -31,6 +33,42 @@ export default function Settings() {
 
   const claimAdmin = useClaimAdmin();
   const changePassword = useChangePassword();
+  const updateProfile = useUpdateProfile();
+  const inviteAdmin = useInviteAdmin();
+
+  const [fullName, setFullName] = useState("");
+  const [nameMsg, setNameMsg] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteMsg, setInviteMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFullName(profile?.full_name ?? "");
+  }, [profile?.full_name]);
+
+  async function saveName() {
+    setNameMsg(null);
+    try {
+      await updateProfile.mutateAsync({ full_name: fullName.trim() });
+      setNameMsg("Name saved.");
+      setTimeout(() => window.location.reload(), 600);
+    } catch (e) {
+      setNameMsg((e as Error).message);
+    }
+  }
+
+  async function sendInvite() {
+    setInviteMsg(null);
+    if (!inviteEmail.trim()) return;
+    try {
+      await inviteAdmin.mutateAsync(inviteEmail);
+      setInviteMsg(
+        `Invite sent to ${inviteEmail}. They'll appear in the team list after they sign in once (then set their role here).`,
+      );
+      setInviteEmail("");
+    } catch (e) {
+      setInviteMsg((e as Error).message);
+    }
+  }
 
   const [walkDay, setWalkDay] = useState("");
   const [walkTime, setWalkTime] = useState("");
@@ -122,9 +160,42 @@ export default function Settings() {
             <Badge>{profile?.role?.replace("_", " ")}</Badge>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => void signOut()}>
-          Sign out
-        </Button>
+
+        <div className="space-y-2 pt-2">
+          <Label>Full name</Label>
+          <Input
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Your full name"
+          />
+          <p className="text-xs text-muted-foreground">
+            Sign-in method: email &amp; password.
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 pt-1">
+          <button
+            onClick={() => void signOut()}
+            className="text-sm text-muted-foreground underline"
+          >
+            Sign out
+          </button>
+          <div className="flex items-center gap-3">
+            {nameMsg && (
+              <span className="text-sm text-muted-foreground">{nameMsg}</span>
+            )}
+            <Button
+              size="sm"
+              onClick={saveName}
+              disabled={
+                updateProfile.isPending ||
+                fullName.trim() === (profile?.full_name ?? "")
+              }
+            >
+              {updateProfile.isPending ? "Saving…" : "Save name"}
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Become admin (only meaningful if no admin exists yet) */}
@@ -215,7 +286,33 @@ export default function Settings() {
       {/* Team management */}
       {isSuper && (
         <div className="stat-card">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Team</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-1">Team</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            People who can access the portal. Set someone to <b>Volunteer</b> and
+            they get the simple check-in-only screen.
+          </p>
+
+          {/* Invite a new admin */}
+          <div className="rounded-xl border p-3 mb-4 space-y-2">
+            <Label>Invite someone (sends a magic sign-in link)</Label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                type="email"
+                placeholder="their email here"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+              />
+              <Button onClick={sendInvite} disabled={inviteAdmin.isPending || !inviteEmail}>
+                {inviteAdmin.isPending ? "Sending…" : "Send invite"}
+              </Button>
+            </div>
+            {inviteMsg && <p className="text-sm text-muted-foreground">{inviteMsg}</p>}
+            <p className="text-xs text-muted-foreground">
+              New people start as Volunteer with no access until you set their
+              role below.
+            </p>
+          </div>
+
           <div className="space-y-3">
             {(profiles ?? []).map((p) => (
               <div

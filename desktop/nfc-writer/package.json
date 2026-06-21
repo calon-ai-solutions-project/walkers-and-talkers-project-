@@ -21,10 +21,7 @@
     "mac": {
       "category": "public.app-category.utilities",
       "target": ["dmg"],
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist"
+      "identity": null
     },
     "dmg": {
       "title": "Walkers & Talkers NFC Writer"

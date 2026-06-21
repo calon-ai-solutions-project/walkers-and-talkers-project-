@@ -37,18 +37,15 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build .dmg
+      - name: Build .dmg (unsigned)
         run: npm run dist
         env:
-          # Signing (only used if the secrets exist)
-          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
           CSC_IDENTITY_AUTODISCOVERY: "false"
-          # Notarisation
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # To produce a SIGNED + notarised build instead, set mac.identity in
+          # package.json back to a Developer ID, re-add hardenedRuntime +
+          # entitlements, and pass CSC_LINK / CSC_KEY_PASSWORD / APPLE_ID /
+          # APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID here from repo secrets.
 
       - name: Upload .dmg as an artifact
         uses: actions/upload-artifact@v4

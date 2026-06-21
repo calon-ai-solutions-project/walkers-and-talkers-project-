@@ -6,9 +6,10 @@
   "main": "src/main.cjs",
   "author": "Calon AI Solutions",
   "license": "UNLICENSED",
+  "repository": "https://github.com/calon-ai-solutions-project/walkers-and-talkers-project-",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --mac dmg"
+    "dist": "electron-builder --mac dmg --publish never"
   },
   "build": {
     "appId": "uk.org.walkersandtalkers.nfcwriter",

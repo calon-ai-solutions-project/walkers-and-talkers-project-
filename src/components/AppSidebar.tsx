@@ -27,9 +27,13 @@ const navItems = [
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+
+  function handleNav() {
+    if (isMobile) setOpenMobile(false);
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -58,6 +62,7 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end
+                      onClick={handleNav}
                       className="rounded-xl px-3 py-2.5 my-0.5 text-sidebar-foreground/90 hover:bg-white/10 transition-colors"
                       activeClassName="bg-white/15 text-white font-semibold ring-1 ring-white/15 shadow-sm"
                     >

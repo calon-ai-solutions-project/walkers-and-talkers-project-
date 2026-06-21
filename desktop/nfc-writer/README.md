@@ -67,6 +67,28 @@ install you must **sign with a Developer ID** and **notarise**:
 Without signing/notarisation the app still works if the user right-clicks →
 **Open** the first time, but that's not a smooth client experience — sign it.
 
+### Automatic builds (GitHub Actions — recommended, no Mac needed by you)
+
+`.github/workflows/build-mac-app.yml` builds the `.dmg` on a macOS runner.
+
+- **Get a build any time:** GitHub → **Actions → "Build Mac NFC Writer" → Run
+  workflow**. When it finishes, download the **`nfc-writer-dmg`** artifact.
+- **Publish a versioned installer:** push a tag, e.g.
+  `git tag nfc-v1.0.0 && git push origin nfc-v1.0.0` → the `.dmg` is attached to
+  a GitHub **Release**.
+
+For a **signed + notarised** installer (no Gatekeeper warning), add these repo
+secrets (Settings → Secrets and variables → Actions); without them you still get
+an unsigned `.dmg` that opens via right-click → **Open**:
+
+| Secret | What it is |
+|---|---|
+| `MAC_CSC_LINK` | base64 of your **Developer ID Application** `.p12` (`base64 -i cert.p12 \| pbcopy`) |
+| `MAC_CSC_KEY_PASSWORD` | password for that `.p12` |
+| `APPLE_ID` | your Apple ID email |
+| `APPLE_APP_SPECIFIC_PASSWORD` | app-specific password for notarisation |
+| `APPLE_TEAM_ID` | your Apple Developer Team ID |
+
 ### Auto-update (later)
 
 Add `electron-updater` + a release feed (e.g. GitHub Releases or S3). macOS

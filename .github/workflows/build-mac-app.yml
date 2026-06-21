@@ -1,0 +1,64 @@
+name: Build Mac NFC Writer
+
+# Builds the desktop NFC Writer .dmg on a real macOS runner.
+# - Click "Run workflow" (workflow_dispatch) any time to get a build, OR
+# - push a tag like `nfc-v1.0.0` to also publish it to a GitHub Release.
+#
+# Signing + notarisation happen automatically IF these repo secrets are set
+# (Settings → Secrets and variables → Actions):
+#   MAC_CSC_LINK              base64 of your Developer ID Application .p12
+#   MAC_CSC_KEY_PASSWORD      password for that .p12
+#   APPLE_ID                  your Apple ID email
+#   APPLE_APP_SPECIFIC_PASSWORD  app-specific password for notarisation
+#   APPLE_TEAM_ID             your Apple Developer Team ID
+# Without them it still builds an UNSIGNED .dmg (works via right-click → Open).
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["nfc-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: desktop/nfc-writer
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build .dmg
+        run: npm run dist
+        env:
+          # Signing (only used if the secrets exist)
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          CSC_IDENTITY_AUTODISCOVERY: "false"
+          # Notarisation
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload .dmg as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nfc-writer-dmg
+          path: desktop/nfc-writer/dist/*.dmg
+          if-no-files-found: error
+
+      - name: Publish to a Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: desktop/nfc-writer/dist/*.dmg

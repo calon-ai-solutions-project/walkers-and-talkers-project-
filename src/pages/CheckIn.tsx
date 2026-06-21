@@ -7,6 +7,7 @@ import {
   useTodaySession,
   useSessionAttendees,
   useManualCheckIn,
+  useOpenSession,
 } from "@/hooks/useSessions";
 
 function fmtTime(iso: string) {
@@ -28,6 +29,7 @@ export default function CheckIn() {
   const { data: attendees } = useSessionAttendees(session?.id);
   const { data: members } = useMembers();
   const manual = useManualCheckIn();
+  const openSession = useOpenSession();
 
   const isOpen = !!session?.opened_at && !session?.closed_at && !session?.cancelled;
   const today = new Date().toLocaleDateString("en-GB", {
@@ -90,13 +92,22 @@ export default function CheckIn() {
           <p className="text-sm font-semibold">
             {session?.cancelled
               ? "Today's walk is cancelled"
-              : "Check-in isn't open yet"}
+              : session
+                ? "Check-in is closed"
+                : "Check-in isn't open yet"}
           </p>
-          {!session?.cancelled && (
-            <p className="text-xs mt-1 opacity-80">
-              Open today's walk from the Bristol dashboard to start.
-            </p>
-          )}
+          <Button
+            className="mt-3 text-white border-0 shadow-md"
+            style={{ backgroundImage: "linear-gradient(135deg, #10b981, #047857)" }}
+            disabled={!region || openSession.isPending}
+            onClick={() => openSession.mutate(region!.id)}
+          >
+            {openSession.isPending
+              ? "Opening…"
+              : session
+                ? "Reopen check-in"
+                : "Open check-in"}
+          </Button>
         </div>
       )}
 

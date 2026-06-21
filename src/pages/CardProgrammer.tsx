@@ -64,29 +64,24 @@ export default function CardProgrammer() {
     setTimeout(() => setCopied(false), 1500);
   }
 
-  async function writeViaReader() {
-    setStatus("Connecting to your ACR122U… hold a blank card on the reader.");
-    setWritingUsb(true);
-    try {
-      const res = await fetch("http://127.0.0.1:8899/write", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
-      const json = (await res.json()) as { status?: string; message?: string };
-      if (json.status === "ok") {
-        await activate.mutateAsync(card!.id);
-        setStatus(`✓ Written and activated for ${memberName}.`);
-      } else {
-        setStatus(`Write failed: ${json.message ?? "unknown error"}`);
-      }
-    } catch {
+  function writeViaDesktop() {
+    const api = import.meta.env.VITE_SUPABASE_URL as string;
+    const key = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+      import.meta.env.VITE_SUPABASE_ANON_KEY) as string;
+    const link =
+      `nfcwriter://write?token=${encodeURIComponent(card!.token)}` +
+      `&url=${encodeURIComponent(url)}` +
+      `&api=${encodeURIComponent(api)}&key=${encodeURIComponent(key)}`;
+    setStatus("Opening the NFC Writer app… place a card on the reader when it asks.");
+    const t = window.setTimeout(() => {
       setStatus(
-        "Couldn't reach the local reader. In tools/acr122u run `npm install` then `npm start` (with the ACR122U plugged in), then try again.",
+        "Nothing happened? Please install the “Walkers & Talkers NFC Writer” app first (ask your admin for the installer).",
       );
-    } finally {
-      setWritingUsb(false);
-    }
+    }, 2500);
+    window.addEventListener("blur", () => window.clearTimeout(t), { once: true });
+    window.location.href = link;
+    // Reflect the likely activation after the app writes + calls the API.
+    window.setTimeout(() => navigate(`/members/${card!.member_id}`), 6000);
   }
 
   return (
@@ -114,7 +109,7 @@ export default function CardProgrammer() {
             <Link2 className="h-4 w-4" /> Copy URL
           </TabsTrigger>
           <TabsTrigger value="usb" className="gap-2">
-            <Usb className="h-4 w-4" /> USB Reader
+            <Usb className="h-4 w-4" /> Desktop App
           </TabsTrigger>
         </TabsList>
 
@@ -165,25 +160,17 @@ export default function CardProgrammer() {
         <TabsContent value="usb">
           <div className="stat-card space-y-4">
             <p className="text-sm text-muted-foreground">
-              Use your <strong>ACR122U</strong> USB reader. First, on the computer
-              with the reader plugged in, run the bridge once:
+              Uses the <strong>Walkers &amp; Talkers NFC Writer</strong> desktop
+              app with your ACR122U reader. Install it once, then click below —
+              the app opens, you place a card, and it writes &amp; activates it.
             </p>
-            <pre className="text-xs bg-muted rounded-lg p-3 overflow-x-auto">
-cd tools/acr122u
-npm install
-npm start
-            </pre>
-            <p className="text-sm text-muted-foreground">
-              Leave that window open, then click below and hold a blank card on
-              the reader.
-            </p>
-            <Button
-              onClick={writeViaReader}
-              disabled={writingUsb}
-              className="w-full h-16 text-base"
-            >
-              {writingUsb ? "Hold card on the reader…" : "Write to card (USB reader)"}
+            <Button onClick={writeViaDesktop} className="w-full h-16 text-base">
+              Write NFC Card (desktop app)
             </Button>
+            <p className="text-xs text-muted-foreground">
+              Don&apos;t have the app yet? Ask your admin for the “NFC Writer”
+              installer (.dmg). Build instructions: <code>desktop/nfc-writer</code>.
+            </p>
           </div>
         </TabsContent>
       </Tabs>

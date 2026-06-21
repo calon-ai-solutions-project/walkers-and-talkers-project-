@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Walkers &amp; Talkers NFC Writer</title>
+    <style>
+      :root { --navy: #1e3a8a; --blue: #3b82f6; }
+      * { box-sizing: border-box; }
+      body {
+        font-family: -apple-system, "Segoe UI", Inter, sans-serif;
+        margin: 0; color: #0f1b3d;
+        background: linear-gradient(160deg, #0a1a5e, #1e3a8a);
+        min-height: 100vh; display: flex; flex-direction: column;
+        align-items: center; padding: 32px 24px; color: #fff;
+      }
+      h1 { font-size: 20px; margin: 8px 0 2px; }
+      .sub { color: rgba(255,255,255,.7); font-size: 13px; margin-bottom: 24px; }
+      .card {
+        background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2);
+        border-radius: 20px; padding: 28px 24px; width: 100%; max-width: 380px;
+        text-align: center; backdrop-filter: blur(8px);
+      }
+      .emoji { font-size: 56px; margin-bottom: 12px; }
+      .state-title { font-size: 22px; font-weight: 800; margin: 0 0 6px; }
+      .state-msg { color: rgba(255,255,255,.85); font-size: 14px; word-break: break-word; }
+      .reader { margin-top: 20px; font-size: 13px; }
+      .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+      .ok { background:#34d399; } .bad { background:#f87171; }
+      .token { margin-top: 14px; font-family: ui-monospace, monospace; font-size: 12px; color: rgba(255,255,255,.55); }
+    </style>
+  </head>
+  <body>
+    <h1>Walkers &amp; Talkers</h1>
+    <div class="sub">NFC Card Writer</div>
+
+    <div class="card">
+      <div class="emoji" id="emoji">💳</div>
+      <p class="state-title" id="title">Ready</p>
+      <p class="state-msg" id="msg">Open a card in the portal and click “Write NFC Card”.</p>
+      <div class="token" id="token"></div>
+    </div>
+
+    <div class="reader">
+      <span class="dot bad" id="readerDot"></span>
+      <span id="readerText">Looking for reader…</span>
+    </div>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>

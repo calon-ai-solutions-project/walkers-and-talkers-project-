@@ -45,36 +45,50 @@ export default function EngagementAlerts() {
         };
       })
       .filter((m) =>
-        filter === "52" ? m.weeks === 999 : m.weeks >= parseInt(filter, 10),
+        filter === "never" ? m.weeks === 999 : m.weeks >= parseInt(filter, 10),
       )
       .sort((a, b) => b.weeks - a.weeks);
   }, [members, counts, filter]);
 
   return (
     <div>
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="page-header flex items-center gap-2">
-            <AlertTriangle className="h-6 w-6 text-destructive" /> Engagement Alerts
-          </h1>
-          <p className="page-subheader">
-            {filter === "52"
-              ? "Members who have never checked in"
-              : `Members not seen in ${filter}+ weeks`}{" "}
-            — {rows.length} flagged
-          </p>
+      <div
+        className="rounded-2xl p-5 mb-6 border shadow-md text-white"
+        style={{ backgroundImage: "linear-gradient(135deg, #fb7185, #be123c)" }}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="h-14 w-14 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+              <AlertTriangle className="h-7 w-7" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-extrabold tracking-tight">
+                Engagement Alerts
+              </h1>
+              <p className="text-sm text-white/85">
+                {filter === "never"
+                  ? "Members who have never checked in"
+                  : `Not seen in ${filter}+ week${filter === "1" ? "" : "s"}`}{" "}
+                · <span className="font-bold">{rows.length}</span> flagged
+              </p>
+            </div>
+          </div>
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="w-full sm:w-48 h-11 rounded-xl bg-white/15 border-white/30 text-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">1+ week</SelectItem>
+              <SelectItem value="2">2+ weeks</SelectItem>
+              <SelectItem value="4">4+ weeks (1 month)</SelectItem>
+              <SelectItem value="8">8+ weeks (2 months)</SelectItem>
+              <SelectItem value="12">12+ weeks (3 months)</SelectItem>
+              <SelectItem value="26">6+ months</SelectItem>
+              <SelectItem value="52">12+ months</SelectItem>
+              <SelectItem value="never">Never returned</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="4">4+ weeks</SelectItem>
-            <SelectItem value="8">8+ weeks</SelectItem>
-            <SelectItem value="12">12+ weeks</SelectItem>
-            <SelectItem value="52">Never returned</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       <div>

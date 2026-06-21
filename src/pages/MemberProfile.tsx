@@ -144,11 +144,12 @@ export default function MemberProfile() {
               <h3 className="text-sm font-semibold text-foreground">Cards</h3>
               <Button
                 size="sm"
-                variant="outline"
                 onClick={() => void issueAndProgram()}
                 disabled={issueCard.isPending}
+                className="text-white border-0 shadow-md"
+                style={{ backgroundImage: "linear-gradient(135deg, #3b82f6, #1e3a8a)" }}
               >
-                Issue new card
+                + Issue new card
               </Button>
             </div>
             {!cards || cards.length === 0 ? (
@@ -163,17 +164,20 @@ export default function MemberProfile() {
                     className="flex items-center justify-between border-b last:border-0 pb-2 last:pb-0"
                   >
                     <div className="flex items-center gap-2">
-                      <Badge
-                        variant={
-                          c.state === "active"
-                            ? "default"
+                      <span
+                        className={
+                          "px-3 py-1 rounded-full text-xs font-semibold capitalize " +
+                          (c.state === "active"
+                            ? "bg-emerald-100 text-emerald-700"
                             : c.state === "revoked"
-                              ? "destructive"
-                              : "secondary"
+                              ? "bg-rose-100 text-rose-700"
+                              : c.state === "lost"
+                                ? "bg-slate-100 text-slate-600"
+                                : "bg-amber-100 text-amber-700")
                         }
                       >
                         {c.state}
-                      </Badge>
+                      </span>
                       <span className="font-mono text-xs text-muted-foreground">
                         {c.token}
                       </span>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Search, Eye } from "lucide-react";
+import { Search, Eye, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +11,11 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import { useMembers, useAttendanceCounts } from "@/hooks/useMembers";
+import {
+  useMembers,
+  useAttendanceCounts,
+  useDeleteMember,
+} from "@/hooks/useMembers";
 
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
@@ -36,6 +40,21 @@ export default function MemberDirectory() {
 
   const { data: members, isLoading, error } = useMembers();
   const { data: counts } = useAttendanceCounts();
+  const deleteMember = useDeleteMember();
+
+  async function handleDelete(id: string, name: string) {
+    if (
+      !window.confirm(
+        `Delete ${name}? This permanently removes the member and their cards and attendance. This cannot be undone.`,
+      )
+    )
+      return;
+    try {
+      await deleteMember.mutateAsync(id);
+    } catch (e) {
+      window.alert("Couldn't delete: " + (e as Error).message);
+    }
+  }
 
   const rows = useMemo(() => {
     const list = (members ?? []).map((m) => {
@@ -117,23 +136,44 @@ export default function MemberDirectory() {
           {/* Mobile: tappable cards */}
           <div className="md:hidden space-y-3">
             {rows.map((m) => (
-              <button
+              <div
                 key={m.id}
-                onClick={() => navigate(`/members/${m.id}`)}
-                className="w-full text-left bg-card rounded-2xl border p-4 shadow-sm active:scale-[0.99] transition"
+                className="bg-card rounded-2xl border p-4 shadow-sm"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-foreground truncate">{m.name}</p>
-                    <p className="text-xs text-muted-foreground">{m.member_no}</p>
+                <div
+                  onClick={() => navigate(`/members/${m.id}`)}
+                  className="cursor-pointer active:scale-[0.99] transition"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-foreground truncate">{m.name}</p>
+                      <p className="text-xs text-muted-foreground">{m.member_no}</p>
+                    </div>
+                    <Badge variant={statusVariant[m.status]}>{m.status}</Badge>
                   </div>
-                  <Badge variant={statusVariant[m.status]}>{m.status}</Badge>
+                  <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                    <span>{m.visits} visits</span>
+                    <span>Last seen {m.lastSeen}</span>
+                  </div>
                 </div>
-                <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                  <span>{m.visits} visits</span>
-                  <span>Last seen {m.lastSeen}</span>
+                <div className="flex justify-end gap-2 mt-3 pt-3 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/members/${m.id}`)}
+                  >
+                    View
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive"
+                    onClick={() => void handleDelete(m.id, m.name)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" /> Delete
+                  </Button>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
 
@@ -165,7 +205,7 @@ export default function MemberDirectory() {
                     <Badge variant={statusVariant[m.status]}>{m.status}</Badge>
                   </td>
                   <td className="py-3 px-4">
-                    <div className="flex items-center justify-end">
+                    <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -176,6 +216,17 @@ export default function MemberDirectory() {
                         }}
                       >
                         <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleDelete(m.id, m.name);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </td>

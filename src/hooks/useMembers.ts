@@ -103,6 +103,20 @@ export type NewMember = {
   data_source?: string;
 };
 
+export function useDeleteMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("members").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["members"] });
+      qc.invalidateQueries({ queryKey: ["attendance-counts"] });
+    },
+  });
+}
+
 export function useCreateMember() {
   const qc = useQueryClient();
   return useMutation({

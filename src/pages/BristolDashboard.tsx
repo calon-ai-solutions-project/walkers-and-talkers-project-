@@ -7,8 +7,10 @@ import {
   UserPlus,
   BarChart3,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
 import { useBristolRegion, useMembers, useAttendanceCounts } from "@/hooks/useMembers";
 import {
@@ -18,6 +20,7 @@ import {
   useOpenSession,
   useCloseSession,
   useCancelSession,
+  useUpdateRecap,
 } from "@/hooks/useSessions";
 
 function fmtDate(d: string) {
@@ -41,6 +44,24 @@ export default function BristolDashboard() {
   const openSession = useOpenSession();
   const closeSession = useCloseSession();
   const cancelSession = useCancelSession();
+  const updateRecap = useUpdateRecap();
+
+  const [recap, setRecap] = useState("");
+  const [recapMsg, setRecapMsg] = useState<string | null>(null);
+  useEffect(() => {
+    setRecap(session?.thank_you_recap ?? "");
+  }, [session?.id, session?.thank_you_recap]);
+
+  async function saveRecap() {
+    if (!session) return;
+    setRecapMsg(null);
+    try {
+      await updateRecap.mutateAsync({ sessionId: session.id, recap });
+      setRecapMsg("Recap saved.");
+    } catch (e) {
+      setRecapMsg((e as Error).message);
+    }
+  }
 
   const total = members?.length ?? 0;
   const presentToday = attendees?.length ?? 0;
@@ -158,6 +179,39 @@ export default function BristolDashboard() {
             </span>
           )}
         </div>
+
+        {(status === "open" || status === "closed") && (
+          <div className="mt-4 border-t pt-4 space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              Anything to add to today&apos;s thank-you email? (optional)
+            </label>
+            <Textarea
+              value={recap}
+              onChange={(e) => setRecap(e.target.value)}
+              placeholder="A photo, a moment, a name to mention…"
+              rows={3}
+            />
+            <p className="text-xs text-muted-foreground">
+              This will be added to the email going out at 5pm today. Leave blank
+              if not.
+            </p>
+            <div className="flex items-center gap-3">
+              <Button
+                size="sm"
+                onClick={saveRecap}
+                disabled={
+                  updateRecap.isPending ||
+                  recap === (session?.thank_you_recap ?? "")
+                }
+              >
+                {updateRecap.isPending ? "Saving…" : "Save recap"}
+              </Button>
+              {recapMsg && (
+                <span className="text-sm text-muted-foreground">{recapMsg}</span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="stat-card mb-6">

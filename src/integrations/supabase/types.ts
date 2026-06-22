@@ -126,34 +126,43 @@ export type Database = {
       }
       email_log: {
         Row: {
-          error: string | null
+          error_message: string | null
           id: string
           member_id: string | null
+          resend_id: string | null
+          scheduled_for: string | null
           sent_at: string
+          sent_status: string | null
           status: string | null
           subject: string | null
           template: string | null
-          to_email: string
+          week_of: string | null
         }
         Insert: {
-          error?: string | null
+          error_message?: string | null
           id?: string
           member_id?: string | null
+          resend_id?: string | null
+          scheduled_for?: string | null
           sent_at?: string
+          sent_status?: string | null
           status?: string | null
           subject?: string | null
           template?: string | null
-          to_email: string
+          week_of?: string | null
         }
         Update: {
-          error?: string | null
+          error_message?: string | null
           id?: string
           member_id?: string | null
+          resend_id?: string | null
+          scheduled_for?: string | null
           sent_at?: string
+          sent_status?: string | null
           status?: string | null
           subject?: string | null
           template?: string | null
-          to_email?: string
+          week_of?: string | null
         }
         Relationships: [
           {
@@ -181,10 +190,12 @@ export type Database = {
           created_at: string
           date_of_birth: string | null
           email: string | null
+          email_opt_out: boolean | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
           first_name: string
           health_notes: string | null
+          photo_consent: boolean | null
           id: string
           last_name: string
           member_no: string | null
@@ -203,10 +214,12 @@ export type Database = {
           created_at?: string
           date_of_birth?: string | null
           email?: string | null
+          email_opt_out?: boolean | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           first_name: string
           health_notes?: string | null
+          photo_consent?: boolean | null
           id?: string
           last_name: string
           member_no?: string | null
@@ -225,10 +238,12 @@ export type Database = {
           created_at?: string
           date_of_birth?: string | null
           email?: string | null
+          email_opt_out?: boolean | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           first_name?: string
           health_notes?: string | null
+          photo_consent?: boolean | null
           id?: string
           last_name?: string
           member_no?: string | null
@@ -320,6 +335,7 @@ export type Database = {
           opened_by: string | null
           region_id: string
           session_date: string
+          thank_you_recap: string | null
         }
         Insert: {
           cancel_reason?: string | null
@@ -332,6 +348,7 @@ export type Database = {
           opened_by?: string | null
           region_id: string
           session_date?: string
+          thank_you_recap?: string | null
         }
         Update: {
           cancel_reason?: string | null
@@ -344,6 +361,7 @@ export type Database = {
           opened_by?: string | null
           region_id?: string
           session_date?: string
+          thank_you_recap?: string | null
         }
         Relationships: [
           {
@@ -357,8 +375,10 @@ export type Database = {
       }
       welfare_flags: {
         Row: {
+          escalated_to_phone_at: string | null
           flagged_at: string
           id: string
+          last_email_sent_at: string | null
           member_id: string
           resolution_note: string | null
           resolved_at: string | null
@@ -367,8 +387,10 @@ export type Database = {
           weeks_absent: number | null
         }
         Insert: {
+          escalated_to_phone_at?: string | null
           flagged_at?: string
           id?: string
+          last_email_sent_at?: string | null
           member_id: string
           resolution_note?: string | null
           resolved_at?: string | null
@@ -377,8 +399,10 @@ export type Database = {
           weeks_absent?: number | null
         }
         Update: {
+          escalated_to_phone_at?: string | null
           flagged_at?: string
           id?: string
+          last_email_sent_at?: string | null
           member_id?: string
           resolution_note?: string | null
           resolved_at?: string | null
@@ -487,6 +511,17 @@ export type Database = {
       manual_check_in: {
         Args: { p_member_id: string; p_session_id: string }
         Returns: Json
+      }
+      members_who_missed_session: {
+        Args: { p_session_id: string }
+        Returns: {
+          member_id: string
+          first_name: string
+          last_name: string
+          email: string
+          region_id: string
+          consecutive_misses: number
+        }[]
       }
     }
     Enums: {

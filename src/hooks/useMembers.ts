@@ -153,6 +153,20 @@ export function useCreateMember() {
         .select("id, member_no")
         .single();
       if (error) throw error;
+
+      // Phase 5: fire the welcome email if the member has an address. Best-effort
+      // — a mail failure must never fail member creation. The send-email Edge
+      // Function (deployed --no-verify-jwt) skips silently if no email/opted out.
+      if (input.email && data?.id) {
+        try {
+          await supabase.functions.invoke("send-email", {
+            body: { template: "welcome", member_id: data.id },
+          });
+        } catch {
+          // swallow — member is saved; welcome email is non-critical
+        }
+      }
+
       return data;
     },
     onSuccess: () => {

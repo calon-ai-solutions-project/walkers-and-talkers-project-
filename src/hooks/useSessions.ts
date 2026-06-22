@@ -15,6 +15,7 @@ export type SessionRow = {
   closed_at: string | null;
   cancelled: boolean | null;
   cancelled_reason: string | null;
+  thank_you_recap: string | null;
 };
 
 export function useTodaySession(regionId?: string) {
@@ -25,7 +26,7 @@ export function useTodaySession(regionId?: string) {
       const { data, error } = await supabase
         .from("sessions")
         .select(
-          "id, region_id, session_date, opened_at, closed_at, cancelled, cancelled_reason",
+          "id, region_id, session_date, opened_at, closed_at, cancelled, cancelled_reason, thank_you_recap",
         )
         .eq("region_id", regionId as string)
         .eq("session_date", londonToday())
@@ -157,6 +158,28 @@ export function useCancelSession() {
         },
         { onConflict: "region_id,session_date" },
       );
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateSession(qc),
+  });
+}
+
+// Optional thank-you recap (Phase 4/5): Andy types a line after the walk; the
+// nudge cron folds it into the 5pm thank-you email via sessions.thank_you_recap.
+export function useUpdateRecap() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      sessionId,
+      recap,
+    }: {
+      sessionId: string;
+      recap: string;
+    }) => {
+      const { error } = await supabase
+        .from("sessions")
+        .update({ thank_you_recap: recap || null })
+        .eq("id", sessionId);
       if (error) throw error;
     },
     onSuccess: () => invalidateSession(qc),

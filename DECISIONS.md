@@ -105,6 +105,44 @@ A one-liner per decision so future-you remembers *why*. Append, don't rewrite.
   "email & password" and keeps Change Password; new-admin invite still uses a
   magic link to onboard, after which the super_admin sets their role.
 
+## Phase 4 / 5 — Nudge engine + emails
+
+- **5pm Europe/London is approximated by `0 16 * * 1-5` UTC.** pg_cron runs in
+  UTC; 16:00 UTC = 17:00 BST (the walking season) and 16:00 GMT in winter. The
+  small winter drift was accepted over the complexity of a DST-aware schedule.
+- **Email send is a Resend Edge Function (`send-email`), not in-app.** The
+  `service_role` key and `RESEND_API_KEY` live only in Edge Function secrets,
+  never in the frontend bundle (CLAUDE.md rule 4). Deployed `--no-verify-jwt`
+  because the cron and portal call it with a bearer/service token, not a user
+  JWT. The four templates are **verbatim** client-signed-off copy — do not
+  paraphrase.
+- **The welfare engine is a second Edge Function (`nudge-cron`)** triggered by
+  pg_cron, not pg-side logic. It reads sessions closed today and queues emails.
+  Chosen so the copy/throttle/escalation logic lives in one testable place.
+- **Throttle + escalation rules:** at most one `missed_you` per `week_of`;
+  misses 1–2 → `missed_you`, miss 3+ → `welfare` (Emma CC'd), capped to one
+  welfare per 14 days; a welfare flag with no resolution 21 days after its last
+  email escalates to a phone-call flag (`escalated_to_phone_at`, stage
+  `escalated`). Matches the proposal's "max 2 consecutive missed_you" in spirit.
+- **Cancelled / un-opened walks pause the clock.** `members_who_missed_session`
+  only counts sessions that are `cancelled = false` AND `closed_at is not null`,
+  so a bank holiday or a walk that simply isn't opened flags nobody.
+- **Recap input lives on the Bristol dashboard** ("Today's walk" card), not a
+  separate `/today` route (we don't have one). Shown while the session is open
+  or closed; saved to `sessions.thank_you_recap`; the cron folds it into the 5pm
+  thank-you email.
+- **Escalation + email-history view lives on `/alerts` (Engagement Alerts).**
+  The existing computed "weeks absent" list is kept; a new "Welfare flags"
+  section reads `welfare_flags` (cron-populated) with an All / Phone-escalations
+  / Welfare-checks filter and a per-member expandable email history. It is empty
+  until the cron has run.
+- **Welcome email fires from the admin "Add Member" flow** (best-effort, never
+  blocks member creation). This is interim: members entered via the Notion
+  registration form won't auto-welcome until a Notion webhook is built.
+- **`members.email_opt_out` / `photo_consent` added.** Opt-out is honoured in
+  both the cron's missed/thank-you views and inside `send-email`. Members with
+  no email get cards but no emails, skipped silently.
+
 ## Open decisions (resolve before launch)
 
 - Live domain: `walkersandtalkers.org` vs `.org.uk` (currently using `.org`

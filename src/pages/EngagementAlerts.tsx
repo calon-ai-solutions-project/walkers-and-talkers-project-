@@ -8,9 +8,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertTriangle, Eye } from "lucide-react";
+import { AlertTriangle, Eye, ChevronDown, ChevronUp, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useMembers, useAttendanceCounts } from "@/hooks/useMembers";
+import { useMembers, useAttendanceCounts, useBristolRegion } from "@/hooks/useMembers";
+import {
+  useWelfareFlags,
+  useEmailHistory,
+  type WelfareFlag,
+} from "@/hooks/useWelfare";
 
 function fmtDate(iso: string | null) {
   if (!iso) return "Never";
@@ -174,6 +179,159 @@ export default function EngagementAlerts() {
          </>
         )}
       </div>
+
+      <WelfareSection />
+    </div>
+  );
+}
+
+const STAGE_LABELS: Record<string, string> = {
+  missed_you: "missed you",
+  welfare_check: "welfare check",
+  escalated: "phone escalation",
+};
+
+function WelfareSection() {
+  const { data: region } = useBristolRegion();
+  const { data: flags } = useWelfareFlags(region?.id);
+  const [filter, setFilter] = useState<"all" | "escalated" | "welfare_check">("all");
+
+  const visible = useMemo(() => {
+    const list = flags ?? [];
+    if (filter === "escalated")
+      return list.filter((f) => f.escalated_to_phone_at);
+    if (filter === "welfare_check")
+      return list.filter((f) => f.stage === "welfare_check" || f.stage === "escalated");
+    return list;
+  }, [flags, filter]);
+
+  const escalatedCount = (flags ?? []).filter((f) => f.escalated_to_phone_at).length;
+
+  return (
+    <div className="mt-10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 className="text-lg font-bold text-foreground">Welfare flags</h2>
+          <p className="text-sm text-muted-foreground">
+            Raised by the nudge engine.{" "}
+            <span className="font-semibold text-destructive">
+              {escalatedCount}
+            </span>{" "}
+            need a phone call.
+          </p>
+        </div>
+        <Select value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
+          <SelectTrigger className="w-full sm:w-56 h-11 rounded-xl">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All open flags</SelectItem>
+            <SelectItem value="escalated">Phone escalations only</SelectItem>
+            <SelectItem value="welfare_check">Welfare checks</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {visible.length === 0 ? (
+        <p className="text-muted-foreground py-6 text-center text-sm">
+          No welfare flags at this filter. The nudge engine raises these
+          automatically when members miss consecutive walks.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {visible.map((f) => (
+            <WelfareFlagCard key={f.id} flag={f} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function fmtDateTime(iso: string | null) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function WelfareFlagCard({ flag }: { flag: WelfareFlag }) {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const { data: history, isLoading } = useEmailHistory(open ? flag.member_id : undefined);
+  const escalated = !!flag.escalated_to_phone_at;
+
+  return (
+    <div
+      className={
+        "bg-card rounded-2xl border p-4 shadow-sm " +
+        (escalated ? "border-destructive/40" : "")
+      }
+    >
+      <div className="flex items-center justify-between gap-2">
+        <button
+          onClick={() => navigate(`/members/${flag.member_id}`)}
+          className="font-semibold text-foreground text-left truncate"
+        >
+          {flag.name}
+        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {escalated && (
+            <Badge variant="destructive" className="text-xs gap-1">
+              <Phone className="h-3 w-3" /> Call
+            </Badge>
+          )}
+          <Badge variant="secondary" className="text-xs">
+            {STAGE_LABELS[flag.stage] ?? flag.stage}
+          </Badge>
+        </div>
+      </div>
+      <div className="text-xs text-muted-foreground mt-1">
+        {flag.weeks_absent != null && <>Missed {flag.weeks_absent} · </>}
+        Last email {fmtDateTime(flag.last_email_sent_at)}
+        {escalated && <> · escalated {fmtDateTime(flag.escalated_to_phone_at)}</>}
+      </div>
+
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="mt-2 inline-flex items-center gap-1 text-sm text-primary font-medium"
+      >
+        Email history
+        {open ? (
+          <ChevronUp className="h-4 w-4" />
+        ) : (
+          <ChevronDown className="h-4 w-4" />
+        )}
+      </button>
+
+      {open && (
+        <div className="mt-2 border-t pt-2">
+          {isLoading ? (
+            <p className="text-xs text-muted-foreground">Loading…</p>
+          ) : (history ?? []).length === 0 ? (
+            <p className="text-xs text-muted-foreground">No emails sent yet.</p>
+          ) : (
+            <ul className="space-y-1">
+              {(history ?? []).map((e) => (
+                <li
+                  key={e.id}
+                  className="flex items-center justify-between text-xs"
+                >
+                  <span className="text-foreground">
+                    {(e.template ?? "email").replace("_", " ")}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {fmtDateTime(e.sent_at)} · {e.status ?? "—"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

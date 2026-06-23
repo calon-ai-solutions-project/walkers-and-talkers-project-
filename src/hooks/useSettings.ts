@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { appUrl } from "@/lib/utils";
 
 export type Role = "super_admin" | "regional_admin" | "volunteer";
 
@@ -41,7 +42,7 @@ export function useInviteAdmin() {
     mutationFn: async (email: string) => {
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim().toLowerCase(),
-        options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+        options: { emailRedirectTo: appUrl("/dashboard") },
       });
       if (error) throw error;
     },

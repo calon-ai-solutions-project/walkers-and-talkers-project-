@@ -150,12 +150,12 @@ export default function Signup() {
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? "Hide password" : "Show password"}
               aria-pressed={showPassword}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-[hsl(228_20%_50%)] hover:text-[hsl(228_72%_36%)] focus:outline-none focus-visible:text-[hsl(228_72%_36%)]"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center h-8 w-8 rounded-md text-[hsl(228_50%_28%)] hover:bg-[hsl(220_22%_94%)] hover:text-[hsl(228_72%_36%)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(228_72%_45%)]"
             >
               {showPassword ? (
-                <EyeOff className="h-4 w-4" />
+                <EyeOff className="h-5 w-5" strokeWidth={2.25} />
               ) : (
-                <Eye className="h-4 w-4" />
+                <Eye className="h-5 w-5" strokeWidth={2.25} />
               )}
             </button>
           </div>

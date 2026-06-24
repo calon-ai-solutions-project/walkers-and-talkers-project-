@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,6 +66,7 @@ export default function Login() {
             id="email"
             type="email"
             required
+            autoFocus
             autoComplete="email"
             placeholder="you@example.com"
             value={email}
@@ -106,12 +107,16 @@ export default function Login() {
         <button
           type="submit"
           disabled={loading || !email || !password}
-          className="w-full h-11 rounded-md text-base font-semibold text-white shadow-md transition-all duration-150 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:brightness-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[hsl(228_72%_45%)]"
+          className="group w-full h-11 rounded-md text-base font-semibold text-white shadow-md transition-all duration-150 enabled:hover:brightness-110 enabled:hover:-translate-y-0.5 enabled:active:translate-y-0 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[hsl(228_72%_45%)] inline-flex items-center justify-center gap-2"
           style={{
-            backgroundImage:
-              "linear-gradient(135deg, hsl(228 80% 36%), hsl(212 85% 50%))",
+            backgroundImage: loading
+              ? "linear-gradient(135deg, hsl(228 80% 36%), hsl(212 85% 50%))"
+              : !email || !password
+              ? "linear-gradient(135deg, hsl(220 15% 70%), hsl(220 15% 78%))"
+              : "linear-gradient(135deg, hsl(228 80% 36%), hsl(212 85% 50%))",
           }}
         >
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           {loading ? "Signing in…" : "Sign in"}
         </button>
         {error && (

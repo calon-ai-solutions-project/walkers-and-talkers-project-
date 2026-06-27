@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -124,15 +124,17 @@ export default function Login() {
             {error}
           </p>
         )}
-        <p className="text-sm text-center pt-2 border-t text-[hsl(228_20%_45%)]">
-          New here?{" "}
-          <Link
-            to="/signup"
-            className="font-semibold text-[hsl(228_72%_36%)] hover:text-[hsl(228_72%_28%)] hover:underline"
-          >
-            Create an account
-          </Link>
-        </p>
+        <div className="pt-3 border-t space-y-1">
+          <p className="text-sm text-center text-[hsl(228_20%_45%)]">
+            Welcome to{" "}
+            <span className="font-semibold text-[hsl(228_72%_22%)]">
+              Walkers &amp; Talkers
+            </span>
+          </p>
+          <p className="text-xs text-center text-[hsl(228_15%_55%)]">
+            Need access? Ask a super admin to invite you.
+          </p>
+        </div>
       </form>
     </main>
   );

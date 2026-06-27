@@ -2,6 +2,7 @@ import { LayoutDashboard, MapPin, ScanLine, Users, UserPlus, BarChart3, AlertTri
 import { NavLink } from "@/components/NavLink";
 import { Logo } from "@/components/Logo";
 import { useLocation } from "react-router-dom";
+import { useAuth, type Role } from "@/lib/auth";
 import {
   Sidebar,
   SidebarContent,
@@ -14,22 +15,38 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const navItems = [
-  { title: "Check-In", url: "/", icon: ScanLine },
-  { title: "Global Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Bristol", url: "/bristol", icon: MapPin },
-  { title: "Member Directory", url: "/members", icon: Users },
-  { title: "Add Member", url: "/members/new", icon: UserPlus },
-  { title: "Reports", url: "/reports", icon: BarChart3 },
-  { title: "Engagement Alerts", url: "/alerts", icon: AlertTriangle },
-  { title: "Cards", url: "/cards", icon: CreditCard },
-  { title: "Settings", url: "/settings", icon: Settings },
+// Each nav item declares which roles can see it. super_admin = everything.
+// regional_admin = own-region admin features (no Global Dashboard).
+// Volunteers never reach this sidebar — they're bounced to /walk by the
+// route guard before AppLayout renders.
+type NavItem = {
+  title: string;
+  url: string;
+  icon: typeof ScanLine;
+  roles: Role[];
+};
+
+const navItems: NavItem[] = [
+  { title: "Check-In", url: "/", icon: ScanLine, roles: ["super_admin", "regional_admin"] },
+  { title: "Global Dashboard", url: "/dashboard", icon: LayoutDashboard, roles: ["super_admin"] },
+  { title: "Bristol", url: "/bristol", icon: MapPin, roles: ["super_admin", "regional_admin"] },
+  { title: "Member Directory", url: "/members", icon: Users, roles: ["super_admin", "regional_admin"] },
+  { title: "Add Member", url: "/members/new", icon: UserPlus, roles: ["super_admin", "regional_admin"] },
+  { title: "Reports", url: "/reports", icon: BarChart3, roles: ["super_admin", "regional_admin"] },
+  { title: "Engagement Alerts", url: "/alerts", icon: AlertTriangle, roles: ["super_admin", "regional_admin"] },
+  { title: "Cards", url: "/cards", icon: CreditCard, roles: ["super_admin", "regional_admin"] },
+  { title: "Settings", url: "/settings", icon: Settings, roles: ["super_admin", "regional_admin"] },
 ];
 
 export function AppSidebar() {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { profile } = useAuth();
+  const role = profile?.role;
+  const visibleItems = role
+    ? navItems.filter((item) => item.roles.includes(role))
+    : [];
 
   function handleNav() {
     if (isMobile) setOpenMobile(false);
@@ -56,7 +73,7 @@ export function AppSidebar() {
           <SidebarGroupLabel className="text-sidebar-muted text-xs uppercase tracking-wider">Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {visibleItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink

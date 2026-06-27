@@ -51,26 +51,73 @@ export function useInviteAdmin() {
       email: string;
       full_name?: string;
     }): Promise<InviteResult> => {
-      const { data, error } = await supabase.functions.invoke("invite-admin", {
-        body: {
-          email: args.email.trim().toLowerCase(),
-          full_name: args.full_name?.trim() || undefined,
-          site_url: appUrl("/").replace(/\/$/, ""),
-        },
-      });
-      if (error) throw error;
-      if (!data?.ok) {
-        const code = data?.error ?? "invite_failed";
-        const detail = data?.detail ?? "";
+      // Call the Edge Function directly via fetch (instead of
+      // supabase.functions.invoke) so we surface the real HTTP status
+      // and body when something fails. The default SDK swallows these
+      // into a generic "Failed to send a request" string, which makes
+      // gateway / CORS / 404 issues impossible to diagnose from the UI.
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const anonKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+        import.meta.env.VITE_SUPABASE_ANON_KEY) as string;
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("Not signed in.");
+
+      const url = `${supabaseUrl}/functions/v1/invite-admin`;
+      let resp: Response;
+      try {
+        resp = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: anonKey,
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            email: args.email.trim().toLowerCase(),
+            full_name: args.full_name?.trim() || undefined,
+            site_url: appUrl("/").replace(/\/$/, ""),
+          }),
+        });
+      } catch (e) {
+        throw new Error(
+          `Network call to invite-admin failed: ${
+            (e as Error).message
+          }. Is the function deployed?`,
+        );
+      }
+
+      const raw = await resp.text();
+      let body: { ok?: boolean; error?: string; detail?: string } & InviteResult;
+      try {
+        body = raw ? JSON.parse(raw) : ({} as never);
+      } catch {
+        throw new Error(
+          `invite-admin returned non-JSON (HTTP ${resp.status}): ${raw.slice(
+            0,
+            300,
+          )}`,
+        );
+      }
+
+      if (!resp.ok || !body.ok) {
+        const code = body.error ?? `http_${resp.status}`;
+        const detail = body.detail ?? "";
         if (code === "already_exists") {
           throw new Error("That email is already on the team.");
         }
         if (code === "forbidden") {
           throw new Error("Only super admins can invite new admins.");
         }
-        throw new Error(`Invite failed: ${detail || code}`);
+        if (code === "no_auth" || code === "invalid_token") {
+          throw new Error("Sign out and back in, then try again.");
+        }
+        throw new Error(
+          `Invite failed (${code}): ${detail || "see Edge Function logs."}`,
+        );
       }
-      return data as InviteResult;
+
+      return body as InviteResult;
     },
   });
 }

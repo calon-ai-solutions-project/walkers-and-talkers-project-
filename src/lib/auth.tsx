@@ -61,17 +61,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function fetchProfile(userId: string) {
+    // Two-step fetch so we don't crash the whole app if Migration B
+    // (must_change_password column) hasn't been applied yet on this
+    // Supabase project. The base columns must exist; the new flag is
+    // additive and defaults to false when missing.
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, email, full_name, role, region_id, must_change_password")
+      .select("id, email, full_name, role, region_id")
       .eq("id", userId)
       .single();
     if (error) {
       console.error("Profile fetch failed:", error.message);
       setProfile(null);
-    } else {
-      setProfile(data as unknown as Profile);
+      setLoading(false);
+      return;
     }
+
+    let mustChange = false;
+    const { data: flagRow, error: flagErr } = await supabase
+      .from("profiles")
+      .select("must_change_password")
+      .eq("id", userId)
+      .single();
+    if (!flagErr && flagRow && typeof flagRow.must_change_password === "boolean") {
+      mustChange = flagRow.must_change_password;
+    }
+    setProfile({
+      ...(data as object),
+      must_change_password: mustChange,
+    } as unknown as Profile);
     setLoading(false);
   }
 

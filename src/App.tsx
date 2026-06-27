@@ -13,6 +13,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import AuthCallback from "./pages/AuthCallback";
 import CheckInPublic from "./pages/CheckInPublic";
 import CheckIn from "./pages/CheckIn";
 import GlobalDashboard from "./pages/GlobalDashboard";
@@ -71,6 +72,7 @@ const App = () => (
             <Route path="/c/:token" element={<CheckInPublic />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
 
             {/* Volunteer kiosk (its own shell; admins can preview it) */}
             <Route

@@ -14,6 +14,7 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import AuthCallback from "./pages/AuthCallback";
+import ChangePasswordFirst from "./pages/ChangePasswordFirst";
 import CheckInPublic from "./pages/CheckInPublic";
 import CheckIn from "./pages/CheckIn";
 import GlobalDashboard from "./pages/GlobalDashboard";
@@ -41,9 +42,11 @@ function Loading() {
 
 // Any signed-in user (used for /walk so admins can preview it too).
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth();
+  const { session, profile, loading } = useAuth();
   if (loading) return <Loading />;
   if (!session) return <Navigate to="/login" replace />;
+  if (profile?.must_change_password)
+    return <Navigate to="/auth/change-password" replace />;
   return <>{children}</>;
 }
 
@@ -52,12 +55,24 @@ function RequireAuthLayout() {
   const { session, profile, loading } = useAuth();
   if (loading) return <Loading />;
   if (!session) return <Navigate to="/login" replace />;
+  if (profile?.must_change_password)
+    return <Navigate to="/auth/change-password" replace />;
   if (profile?.role === "volunteer") return <Navigate to="/walk" replace />;
   return (
     <AppLayout>
       <Outlet />
     </AppLayout>
   );
+}
+
+// Forced-password-change route. Bounces away if the user is signed out
+// (back to /login) or the flag was already cleared (forward to /).
+function ForcePasswordChangeRoute() {
+  const { session, profile, loading } = useAuth();
+  if (loading) return <Loading />;
+  if (!session) return <Navigate to="/login" replace />;
+  if (!profile?.must_change_password) return <Navigate to="/" replace />;
+  return <ChangePasswordFirst />;
 }
 
 const App = () => (
@@ -73,6 +88,10 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route
+              path="/auth/change-password"
+              element={<ForcePasswordChangeRoute />}
+            />
 
             {/* Volunteer kiosk (its own shell; admins can preview it) */}
             <Route

@@ -115,8 +115,18 @@ export function useClaimAdmin() {
 export function useChangePassword() {
   return useMutation({
     mutationFn: async (password: string) => {
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
+      const { data: u, error: userErr } = await supabase.auth.updateUser({
+        password,
+      });
+      if (userErr) throw userErr;
+      // If this user was created by an admin invite, clear the
+      // must_change_password flag so the gate doesn't re-trigger.
+      if (u.user) {
+        await supabase
+          .from("profiles")
+          .update({ must_change_password: false })
+          .eq("id", u.user.id);
+      }
     },
   });
 }

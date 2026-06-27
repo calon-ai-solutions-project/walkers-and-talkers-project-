@@ -9,12 +9,22 @@ const SUPABASE_SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
-type SendRequest = {
+type MemberSendRequest = {
   template: "welcome" | "thank_you" | "missed_you" | "welfare";
   member_id: string;
   session_id?: string;
   recap?: string;
 };
+
+type AdminInviteRequest = {
+  template: "admin_invite";
+  to_email: string;
+  first_name?: string;
+  password: string;
+  login_url: string;
+};
+
+type SendRequest = MemberSendRequest | AdminInviteRequest;
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
@@ -23,6 +33,34 @@ Deno.serve(async (req) => {
 
   try {
     const body: SendRequest = await req.json();
+
+    // admin_invite goes to a non-member email address (an admin/volunteer
+    // being onboarded), so it skips the members table lookup and the
+    // email_log row (no member_id to reference).
+    if (body.template === "admin_invite") {
+      const tpl = buildAdminInviteTemplate(body);
+      const resendResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: RESEND_FROM,
+          reply_to: RESEND_REPLY_TO,
+          to: [body.to_email],
+          subject: tpl.subject,
+          html: tpl.html,
+          text: tpl.text,
+        }),
+      });
+      const resendData = await resendResponse.json();
+      return new Response(
+        JSON.stringify({ ok: resendResponse.ok, id: resendData.id, error: resendResponse.ok ? null : resendData }),
+        { status: resendResponse.ok ? 200 : 500 },
+      );
+    }
+
     const { data: member, error: memberError } = await supabase
       .from("members")
       .select("*")
@@ -217,6 +255,46 @@ walkersandtalkers.org.uk`,
     default:
       throw new Error(`Unknown template: ${template}`);
   }
+}
+
+function buildAdminInviteTemplate(req: AdminInviteRequest) {
+  const firstName =
+    (req.first_name && req.first_name.trim()) ||
+    req.to_email.split("@")[0];
+  const safeName = escapeHtml(firstName);
+  const safeEmail = escapeHtml(req.to_email);
+  const safePass = escapeHtml(req.password);
+  const safeUrl = escapeHtml(req.login_url);
+
+  return {
+    subject: "Your Walkers & Talkers admin login",
+    text: `Hi ${firstName},
+
+You've been added as an admin on the Walkers & Talkers portal.
+
+Sign in here: ${req.login_url}
+
+Email:    ${req.to_email}
+Password: ${req.password}
+
+You'll be asked to set a new password the first time you sign in.
+
+Andy
+Walkers & Talkers
+walkersandtalkers.org.uk`,
+    html: wrapHtml(`
+<h2 style="margin:0 0 16px;color:#1a2547;">Welcome to the Walkers &amp; Talkers portal</h2>
+<p>Hi ${safeName},</p>
+<p>You've been added as an admin. Use the details below to sign in:</p>
+<div style="background:#f4f6fb;border:1px solid #dde3f0;border-radius:12px;padding:16px;margin:16px 0;">
+  <p style="margin:0 0 6px;"><strong>Email:</strong> <code style="background:#fff;padding:2px 6px;border-radius:4px;">${safeEmail}</code></p>
+  <p style="margin:0;"><strong>Password:</strong> <code style="background:#fff;padding:2px 6px;border-radius:4px;">${safePass}</code></p>
+</div>
+<p><a href="${safeUrl}" style="display:inline-block;background:linear-gradient(135deg,#1c47b0,#1f7fe6);color:#fff;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:8px;">Sign in</a></p>
+<p style="font-size:13px;color:#5b6379;">You'll be asked to set a new password the first time you sign in.</p>
+<p>Andy<br>Walkers &amp; Talkers<br><a href="https://walkersandtalkers.org.uk">walkersandtalkers.org.uk</a></p>
+`),
+  };
 }
 
 function escapeHtml(s: string): string {

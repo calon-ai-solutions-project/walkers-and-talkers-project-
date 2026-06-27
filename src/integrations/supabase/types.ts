@@ -271,6 +271,7 @@ export type Database = {
           first_name: string | null
           id: string
           last_name: string | null
+          must_change_password: boolean
           region_id: string | null
           role: Database["public"]["Enums"]["app_role"]
         }
@@ -280,6 +281,7 @@ export type Database = {
           first_name?: string | null
           id: string
           last_name?: string | null
+          must_change_password?: boolean
           region_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
         }
@@ -289,6 +291,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           last_name?: string | null
+          must_change_password?: boolean
           region_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
         }

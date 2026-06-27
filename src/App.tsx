@@ -75,6 +75,24 @@ function ForcePasswordChangeRoute() {
   return <ChangePasswordFirst />;
 }
 
+// Restrict a specific admin route to a subset of roles. RequireAuthLayout
+// already filtered out volunteers + signed-out + must-change-password
+// users by the time this renders.
+function RoleGate({
+  allow,
+  children,
+}: {
+  allow: ("super_admin" | "regional_admin")[];
+  children: React.ReactNode;
+}) {
+  const { profile } = useAuth();
+  if (!profile) return <Loading />;
+  if (profile.role !== "super_admin" && profile.role !== "regional_admin")
+    return <Navigate to="/" replace />;
+  if (!allow.includes(profile.role)) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -106,7 +124,14 @@ const App = () => (
             {/* Admin portal — sign-in required (data is protected by RLS) */}
             <Route element={<RequireAuthLayout />}>
               <Route path="/" element={<CheckIn />} />
-              <Route path="/dashboard" element={<GlobalDashboard />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <RoleGate allow={["super_admin"]}>
+                    <GlobalDashboard />
+                  </RoleGate>
+                }
+              />
               <Route path="/bristol" element={<BristolDashboard />} />
               <Route path="/members" element={<MemberDirectory />} />
               <Route path="/members/new" element={<AddMember />} />

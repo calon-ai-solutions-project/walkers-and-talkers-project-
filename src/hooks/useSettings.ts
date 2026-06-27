@@ -37,14 +37,40 @@ export function useUpdateProfile() {
   });
 }
 
+export type InviteResult = {
+  ok: boolean;
+  email: string;
+  temporary_password: string;
+  email_sent: boolean;
+  email_error?: unknown;
+};
+
 export function useInviteAdmin() {
   return useMutation({
-    mutationFn: async (email: string) => {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: { emailRedirectTo: appUrl("/dashboard") },
+    mutationFn: async (args: {
+      email: string;
+      full_name?: string;
+    }): Promise<InviteResult> => {
+      const { data, error } = await supabase.functions.invoke("invite-admin", {
+        body: {
+          email: args.email.trim().toLowerCase(),
+          full_name: args.full_name?.trim() || undefined,
+          site_url: appUrl("/").replace(/\/$/, ""),
+        },
       });
       if (error) throw error;
+      if (!data?.ok) {
+        const code = data?.error ?? "invite_failed";
+        const detail = data?.detail ?? "";
+        if (code === "already_exists") {
+          throw new Error("That email is already on the team.");
+        }
+        if (code === "forbidden") {
+          throw new Error("Only super admins can invite new admins.");
+        }
+        throw new Error(`Invite failed: ${detail || code}`);
+      }
+      return data as InviteResult;
     },
   });
 }

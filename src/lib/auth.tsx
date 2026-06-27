@@ -16,6 +16,7 @@ export type Profile = {
   full_name: string | null;
   role: Role;
   region_id: string | null;
+  must_change_password: boolean;
 };
 
 type AuthCtx = {
@@ -24,6 +25,7 @@ type AuthCtx = {
   profile: Profile | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 };
 
 const Ctx = createContext<AuthCtx>({
@@ -32,6 +34,7 @@ const Ctx = createContext<AuthCtx>({
   profile: null,
   loading: true,
   signOut: async () => {},
+  refreshProfile: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -60,16 +63,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function fetchProfile(userId: string) {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, email, full_name, role, region_id")
+      .select("id, email, full_name, role, region_id, must_change_password")
       .eq("id", userId)
       .single();
     if (error) {
       console.error("Profile fetch failed:", error.message);
       setProfile(null);
     } else {
-      setProfile(data as Profile);
+      setProfile(data as unknown as Profile);
     }
     setLoading(false);
+  }
+
+  async function refreshProfile() {
+    const userId = session?.user.id;
+    if (userId) await fetchProfile(userId);
   }
 
   async function signOut() {
@@ -84,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         loading,
         signOut,
+        refreshProfile,
       }}
     >
       {children}

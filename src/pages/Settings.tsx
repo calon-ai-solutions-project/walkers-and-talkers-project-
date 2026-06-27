@@ -39,7 +39,13 @@ export default function Settings() {
   const [fullName, setFullName] = useState("");
   const [nameMsg, setNameMsg] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
   const [inviteMsg, setInviteMsg] = useState<string | null>(null);
+  const [inviteResult, setInviteResult] = useState<{
+    email: string;
+    password: string;
+    emailSent: boolean;
+  } | null>(null);
 
   useEffect(() => {
     setFullName(profile?.full_name ?? "");
@@ -58,15 +64,35 @@ export default function Settings() {
 
   async function sendInvite() {
     setInviteMsg(null);
+    setInviteResult(null);
     if (!inviteEmail.trim()) return;
     try {
-      await inviteAdmin.mutateAsync(inviteEmail);
+      const res = await inviteAdmin.mutateAsync({
+        email: inviteEmail,
+        full_name: inviteName,
+      });
+      setInviteResult({
+        email: res.email,
+        password: res.temporary_password,
+        emailSent: res.email_sent,
+      });
       setInviteMsg(
-        `Invite sent to ${inviteEmail}. They'll appear in the team list after they sign in once (then set their role here).`,
+        res.email_sent
+          ? `Login details sent to ${res.email}. They'll appear in the team list after they sign in once (then set their role here).`
+          : `Account created for ${res.email}, but the email failed to send. Copy the password below and share it manually.`,
       );
       setInviteEmail("");
+      setInviteName("");
     } catch (e) {
       setInviteMsg((e as Error).message);
+    }
+  }
+
+  async function copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // ignore — older browsers without clipboard API
     }
   }
 
@@ -294,8 +320,13 @@ export default function Settings() {
 
           {/* Invite a new admin */}
           <div className="rounded-xl border p-3 mb-4 space-y-2">
-            <Label>Invite someone (sends a magic sign-in link)</Label>
-            <div className="flex flex-col sm:flex-row gap-2">
+            <Label>Invite someone (emails them a temporary password)</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
+              <Input
+                placeholder="Their name (optional)"
+                value={inviteName}
+                onChange={(e) => setInviteName(e.target.value)}
+              />
               <Input
                 type="email"
                 placeholder="their email here"
@@ -303,10 +334,51 @@ export default function Settings() {
                 onChange={(e) => setInviteEmail(e.target.value)}
               />
               <Button onClick={sendInvite} disabled={inviteAdmin.isPending || !inviteEmail}>
-                {inviteAdmin.isPending ? "Sending…" : "Send invite"}
+                {inviteAdmin.isPending ? "Creating…" : "Send invite"}
               </Button>
             </div>
             {inviteMsg && <p className="text-sm text-muted-foreground">{inviteMsg}</p>}
+            {inviteResult && (
+              <div className="rounded-lg border bg-muted/40 p-3 text-sm space-y-2">
+                <p className="font-medium text-foreground">
+                  {inviteResult.emailSent
+                    ? "Account created — credentials emailed."
+                    : "Account created — share these manually:"}
+                </p>
+                <div className="space-y-1 font-mono text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>
+                      <span className="text-muted-foreground">Email:</span>{" "}
+                      {inviteResult.email}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(inviteResult.email)}
+                      className="text-primary hover:underline"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span>
+                      <span className="text-muted-foreground">Password:</span>{" "}
+                      {inviteResult.password}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(inviteResult.password)}
+                      className="text-primary hover:underline"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  This password is shown once. Ask them to change it under
+                  Settings → Change password after first sign-in.
+                </p>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
               New people start as Volunteer with no access until you set their
               role below.

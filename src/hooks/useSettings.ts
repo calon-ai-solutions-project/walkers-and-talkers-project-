@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { appUrl } from "@/lib/utils";
 
 export type Role = "super_admin" | "regional_admin" | "volunteer";
 
@@ -36,14 +37,40 @@ export function useUpdateProfile() {
   });
 }
 
+export type InviteResult = {
+  ok: boolean;
+  email: string;
+  temporary_password: string;
+  email_sent: boolean;
+  email_error?: unknown;
+};
+
 export function useInviteAdmin() {
   return useMutation({
-    mutationFn: async (email: string) => {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+    mutationFn: async (args: {
+      email: string;
+      full_name?: string;
+    }): Promise<InviteResult> => {
+      const { data, error } = await supabase.functions.invoke("invite-admin", {
+        body: {
+          email: args.email.trim().toLowerCase(),
+          full_name: args.full_name?.trim() || undefined,
+          site_url: appUrl("/").replace(/\/$/, ""),
+        },
       });
       if (error) throw error;
+      if (!data?.ok) {
+        const code = data?.error ?? "invite_failed";
+        const detail = data?.detail ?? "";
+        if (code === "already_exists") {
+          throw new Error("That email is already on the team.");
+        }
+        if (code === "forbidden") {
+          throw new Error("Only super admins can invite new admins.");
+        }
+        throw new Error(`Invite failed: ${detail || code}`);
+      }
+      return data as InviteResult;
     },
   });
 }
@@ -88,8 +115,18 @@ export function useClaimAdmin() {
 export function useChangePassword() {
   return useMutation({
     mutationFn: async (password: string) => {
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
+      const { data: u, error: userErr } = await supabase.auth.updateUser({
+        password,
+      });
+      if (userErr) throw userErr;
+      // If this user was created by an admin invite, clear the
+      // must_change_password flag so the gate doesn't re-trigger.
+      if (u.user) {
+        await supabase
+          .from("profiles")
+          .update({ must_change_password: false })
+          .eq("id", u.user.id);
+      }
     },
   });
 }

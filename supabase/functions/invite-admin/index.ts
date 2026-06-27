@@ -99,13 +99,23 @@ Deno.serve(async (req) => {
     }
 
     // 4. Mark the new profile as needing a password change. The trigger
-    // profile_autocreate inserted the row already; we just flip the flag
-    // and write the full_name if one was provided.
+    // profile_autocreate inserted the row already; we flip the flag,
+    // write the full_name if provided, and assign a default region so
+    // /walk (volunteer kiosk) and region-scoped admin pages have data
+    // to render. Default region = Bristol while we're a single-region
+    // charity; the super_admin can move them later in Settings → Team.
+    const { data: defaultRegion } = await admin
+      .from("regions")
+      .select("id")
+      .eq("slug", "bristol")
+      .maybeSingle();
+
     await admin
       .from("profiles")
       .update({
         must_change_password: true,
         ...(fullName ? { full_name: fullName } : {}),
+        ...(defaultRegion?.id ? { region_id: defaultRegion.id } : {}),
       })
       .eq("id", created.user.id);
 

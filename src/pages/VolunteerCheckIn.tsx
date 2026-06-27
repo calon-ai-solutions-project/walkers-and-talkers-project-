@@ -112,14 +112,43 @@ export default function VolunteerCheckIn() {
     );
   } else {
     // State 3 — open
+    const checkedInCount = (attendees ?? []).length;
+    const sessionDate = new Date(session.session_date).toLocaleDateString(
+      "en-GB",
+      { weekday: "long", day: "numeric", month: "long", year: "numeric" },
+    );
+
     content = (
       <div>
-        <div className="mb-6">
-          <h2 className="text-2xl font-serif font-bold">Today's Bristol walk</h2>
-          <p className="text-white/70">
-            {(attendees ?? []).length} member
-            {(attendees ?? []).length === 1 ? "" : "s"} checked in
+        {/* Session header — same info the admin Check-In page shows */}
+        <div className="mb-6 text-center">
+          <p className="text-xs uppercase tracking-[0.18em] text-emerald-300/90 font-semibold">
+            Live Session
           </p>
+          <h2 className="text-3xl font-serif font-bold mt-2">
+            Wednesday Session — Bristol
+          </h2>
+          <p className="text-white/70 mt-1">{sessionDate}</p>
+        </div>
+
+        {/* Big live count card — matches the admin layout */}
+        <div
+          className="rounded-2xl p-6 mb-6 shadow-xl flex items-center gap-5"
+          style={{
+            backgroundImage:
+              "linear-gradient(135deg, hsl(228 80% 36%), hsl(212 85% 50%))",
+          }}
+        >
+          <div className="h-14 w-14 rounded-xl bg-white/15 flex items-center justify-center text-3xl">
+            👥
+          </div>
+          <div className="flex-1">
+            <div className="text-5xl font-bold leading-none">{checkedInCount}</div>
+            <div className="flex items-center gap-2 mt-2 text-sm text-white/85">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              checked in · live
+            </div>
+          </div>
         </div>
 
         {flash && (
@@ -128,49 +157,54 @@ export default function VolunteerCheckIn() {
           </div>
         )}
 
-        <input
-          autoFocus
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Start typing a name…"
-          className="w-full h-14 rounded-2xl bg-white text-foreground px-5 text-lg outline-none shadow-lg"
-        />
+        <div className="rounded-2xl bg-white/10 border border-white/15 p-5 mb-6">
+          <p className="text-xs uppercase tracking-wider text-white/65 font-semibold mb-3">
+            Forgot a card? Check in by name
+          </p>
+          <input
+            autoFocus
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Start typing a member's name…"
+            className="w-full h-14 rounded-2xl bg-white text-foreground px-5 text-lg outline-none shadow-lg"
+          />
 
-        {matches.length > 0 && (
-          <ul className="mt-3 rounded-2xl overflow-hidden bg-white/10 border border-white/15 divide-y divide-white/10">
-            {matches.map((m) => (
-              <li key={m.id}>
-                <button
-                  onClick={() =>
-                    void checkIn(m.id, `${m.first_name} ${m.last_name ?? ""}`.trim())
-                  }
-                  disabled={manual.isPending}
-                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/10 text-left min-h-[56px] disabled:opacity-50"
-                >
-                  <span>
-                    <span className="font-semibold">
-                      {m.first_name} {m.last_name ?? ""}
+          {matches.length > 0 && (
+            <ul className="mt-3 rounded-2xl overflow-hidden bg-white/5 border border-white/15 divide-y divide-white/10">
+              {matches.map((m) => (
+                <li key={m.id}>
+                  <button
+                    onClick={() =>
+                      void checkIn(m.id, `${m.first_name} ${m.last_name ?? ""}`.trim())
+                    }
+                    disabled={manual.isPending}
+                    className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/10 text-left min-h-[56px] disabled:opacity-50"
+                  >
+                    <span>
+                      <span className="font-semibold">
+                        {m.first_name} {m.last_name ?? ""}
+                      </span>
+                      <span className="block text-xs text-white/55 font-mono">
+                        {m.member_no}
+                      </span>
                     </span>
-                    <span className="block text-xs text-white/55 font-mono">
-                      {m.member_no}
+                    <span className="text-sm text-sky-300 font-medium">
+                      Tap to check in →
                     </span>
-                  </span>
-                  <span className="text-sm text-sky-300 font-medium">
-                    Tap to check in →
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
 
-        {search.trim().length >= 2 && matches.length === 0 && (
-          <p className="mt-3 text-white/60 text-sm">No matching members.</p>
-        )}
+          {search.trim().length >= 2 && matches.length === 0 && (
+            <p className="mt-3 text-white/60 text-sm">No matching members.</p>
+          )}
+        </div>
 
-        <div className="mt-8">
+        <div>
           <h3 className="text-sm uppercase tracking-wider text-white/50 mb-3">
-            Already checked in
+            Recent check-ins
           </h3>
           {(attendees ?? []).length === 0 ? (
             <p className="text-white/55 text-sm">No one checked in yet.</p>

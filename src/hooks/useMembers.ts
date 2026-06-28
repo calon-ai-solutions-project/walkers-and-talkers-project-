@@ -134,6 +134,26 @@ export function useCreateMember() {
         .single();
       if (rErr || !region) throw rErr ?? new Error("Bristol region missing");
 
+      // Refuse if a member with the same email already exists — email is
+      // a stronger identity than name, and the public registration form
+      // (anyone can fill, so spammy duplicates would otherwise sneak in)
+      // needs this guard too.
+      const emailNorm = input.email?.trim().toLowerCase() ?? "";
+      if (emailNorm) {
+        const { data: emailMatch } = await supabase
+          .from("members")
+          .select("id, member_no, first_name, last_name")
+          .eq("region_id", region.id)
+          .ilike("email", emailNorm)
+          .limit(1)
+          .maybeSingle();
+        if (emailMatch) {
+          throw new Error(
+            `A member with this email already exists (${emailMatch.first_name} ${emailMatch.last_name}, ${emailMatch.member_no}). Please use a different email or update the existing record.`,
+          );
+        }
+      }
+
       // Upsert by name: if a member with the same first + last name already
       // exists in this region (case-insensitive, trimmed), update them
       // instead of creating a duplicate. Multiple matches → skip the

@@ -30,6 +30,7 @@ import Cards from "./pages/Cards";
 import CardProgrammer from "./pages/CardProgrammer";
 import VolunteerCheckIn from "./pages/VolunteerCheckIn";
 import VolunteerAddMember from "./pages/VolunteerAddMember";
+import PublicRegister from "./pages/PublicRegister";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -106,6 +107,8 @@ const App = () => (
           <Routes>
             {/* Public member tap / QR landing */}
             <Route path="/c/:token" element={<CheckInPublic />} />
+            {/* Public registration form — admins share this URL */}
+            <Route path="/register" element={<PublicRegister />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/auth/callback" element={<AuthCallback />} />

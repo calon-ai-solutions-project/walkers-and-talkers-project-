@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { Link2, Copy, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { appUrl } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,11 +61,53 @@ export default function AddMember() {
     }
   }
 
+  const shareUrl = appUrl("/register");
+  const [copied, setCopied] = useState(false);
+  async function copyShareUrl() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // ignore
+    }
+  }
+
   return (
     <div className="max-w-2xl">
-      <div className="mb-6">
-        <h1 className="page-header">Add New Member</h1>
-        <p className="page-subheader">Register a Bristol member</p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="page-header">Add New Member</h1>
+          <p className="page-subheader">Register a Bristol member</p>
+        </div>
+        {!isVolunteerContext && (
+          <div className="bg-gradient-to-br from-[hsl(228_60%_96%)] to-white border border-[hsl(228_72%_36%/0.18)] rounded-xl p-3 sm:w-72 shrink-0">
+            <p className="text-xs font-semibold text-[hsl(228_72%_36%)] uppercase tracking-wide flex items-center gap-1.5">
+              <Link2 className="h-3 w-3" />
+              Self-register link
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Share with anyone who wants to register themselves.
+            </p>
+            <div className="mt-2 flex items-center gap-1">
+              <code className="text-[11px] bg-white border rounded px-2 py-1.5 flex-1 truncate font-mono">
+                {shareUrl}
+              </code>
+              <button
+                type="button"
+                onClick={copyShareUrl}
+                className="h-7 w-7 rounded inline-flex items-center justify-center bg-[hsl(228_72%_36%)] text-white hover:bg-[hsl(228_72%_28%)] shrink-0"
+                aria-label="Copy registration URL"
+              >
+                {copied ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="stat-card space-y-5 mb-6">

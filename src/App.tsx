@@ -29,6 +29,7 @@ import Settings from "./pages/Settings";
 import Cards from "./pages/Cards";
 import CardProgrammer from "./pages/CardProgrammer";
 import VolunteerCheckIn from "./pages/VolunteerCheckIn";
+import VolunteerAddMember from "./pages/VolunteerAddMember";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -119,6 +120,14 @@ const App = () => (
               element={
                 <AuthGate>
                   <VolunteerCheckIn />
+                </AuthGate>
+              }
+            />
+            <Route
+              path="/walk/add-member"
+              element={
+                <AuthGate>
+                  <VolunteerAddMember />
                 </AuthGate>
               }
             />

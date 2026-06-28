@@ -1,4 +1,11 @@
+import { NavLink } from "react-router-dom";
+import { ScanLine, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+
+const tabs = [
+  { to: "/walk", label: "Check-in", icon: ScanLine },
+  { to: "/walk/add-member", label: "Add member", icon: UserPlus },
+];
 
 export function VolunteerShell({ children }: { children: React.ReactNode }) {
   const { profile, user, signOut } = useAuth();
@@ -22,6 +29,31 @@ export function VolunteerShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </header>
+
+      {/* Persistent volunteer tabs — always visible regardless of session
+          state, so Add member is reachable even before the walk opens. */}
+      <nav className="border-b border-white/10 bg-white/5">
+        <div className="max-w-2xl mx-auto flex">
+          {tabs.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end
+              className={({ isActive }) =>
+                `flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-colors border-b-2 ${
+                  isActive
+                    ? "text-white border-sky-400"
+                    : "text-white/65 border-transparent hover:text-white hover:bg-white/5"
+                }`
+              }
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
+
       <main className="max-w-2xl mx-auto p-6">{children}</main>
     </div>
   );

@@ -1,6 +1,4 @@
 import { useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { UserPlus } from "lucide-react";
 import { VolunteerShell } from "@/components/VolunteerShell";
 import { useAuth } from "@/lib/auth";
 import { useMembers } from "@/hooks/useMembers";
@@ -153,13 +151,7 @@ export default function VolunteerCheckIn() {
           </div>
         </div>
 
-        <Link
-          to="/walk/add-member"
-          className="mb-6 w-full inline-flex items-center justify-center gap-2 h-12 rounded-xl bg-white/10 border border-white/15 hover:bg-white/15 transition-colors text-base font-semibold"
-        >
-          <UserPlus className="h-5 w-5" />
-          Add a new member
-        </Link>
+        <div className="mb-6" />
 
         {flash && (
           <div className="mb-4 rounded-xl bg-emerald-500/20 border border-emerald-400/40 px-4 py-3 text-emerald-100 font-medium">

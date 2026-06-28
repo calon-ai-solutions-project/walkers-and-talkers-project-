@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { VolunteerShell } from "@/components/VolunteerShell";
 import { useAuth } from "@/lib/auth";
 import { useMembers } from "@/hooks/useMembers";
@@ -37,6 +38,19 @@ export default function VolunteerCheckIn() {
   const [search, setSearch] = useState("");
   const [flash, setFlash] = useState<string | null>(null);
   const flashTimer = useRef<number>();
+  const [params, setParams] = useSearchParams();
+
+  // Surface "Added Jane Doe" / "Updated Jane Doe" toast when the volunteer
+  // bounces back from /walk/add-member.
+  useEffect(() => {
+    const msg = params.get("flash");
+    if (!msg) return;
+    setFlash(msg);
+    window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => setFlash(null), 3500);
+    params.delete("flash");
+    setParams(params, { replace: true });
+  }, [params, setParams]);
 
   const checkedInIds = useMemo(
     () => new Set((attendees ?? []).map((a) => a.member_id)),

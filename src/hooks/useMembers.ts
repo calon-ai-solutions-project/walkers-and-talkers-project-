@@ -117,16 +117,61 @@ export function useDeleteMember() {
   });
 }
 
+export type UpsertResult = {
+  id: string;
+  member_no: string;
+  action: "created" | "updated";
+};
+
 export function useCreateMember() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: NewMember) => {
+    mutationFn: async (input: NewMember): Promise<UpsertResult> => {
       const { data: region, error: rErr } = await supabase
         .from("regions")
         .select("id")
         .eq("slug", "bristol")
         .single();
       if (rErr || !region) throw rErr ?? new Error("Bristol region missing");
+
+      // Upsert by name: if a member with the same first + last name already
+      // exists in this region (case-insensitive, trimmed), update them
+      // instead of creating a duplicate. Multiple matches → skip the
+      // update and create a new row so we don't silently overwrite the
+      // wrong person.
+      const firstNorm = input.first_name.trim();
+      const lastNorm = input.last_name.trim();
+      const { data: candidates } = await supabase
+        .from("members")
+        .select("id, member_no")
+        .eq("region_id", region.id)
+        .ilike("first_name", firstNorm)
+        .ilike("last_name", lastNorm)
+        .limit(2);
+
+      if (candidates && candidates.length === 1) {
+        // Update — only write fields the user actually filled in, so an
+        // accidentally-blank field doesn't wipe existing data.
+        const updates: Record<string, string | null> = {};
+        if (input.phone?.trim()) updates.phone = input.phone.trim();
+        if (input.email?.trim()) updates.email = input.email.trim();
+        if (input.address_line1?.trim())
+          updates.address_line1 = input.address_line1.trim();
+        if (input.postcode?.trim()) updates.postcode = input.postcode.trim();
+        if (input.emergency_contact_name?.trim())
+          updates.emergency_contact_name = input.emergency_contact_name.trim();
+        if (input.emergency_contact_phone?.trim())
+          updates.emergency_contact_phone = input.emergency_contact_phone.trim();
+
+        if (Object.keys(updates).length > 0) {
+          const { error: upErr } = await supabase
+            .from("members")
+            .update(updates)
+            .eq("id", candidates[0].id);
+          if (upErr) throw upErr;
+        }
+        return { ...candidates[0], action: "updated" as const };
+      }
 
       // Next member number: WT-#### based on current count.
       const { count } = await supabase
@@ -167,7 +212,7 @@ export function useCreateMember() {
         }
       }
 
-      return data;
+      return { ...data, action: "created" as const };
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["members"] });

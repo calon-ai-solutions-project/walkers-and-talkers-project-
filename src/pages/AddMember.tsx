@@ -41,11 +41,19 @@ export default function AddMember() {
       return;
     }
     try {
-      const created = await createMember.mutateAsync(form);
+      const result = await createMember.mutateAsync(form);
       // Volunteer kiosk has no member-profile view to land on, so send
-      // them back to today's walk instead. Admins keep their existing
-      // profile-on-create flow.
-      navigate(isVolunteerContext ? "/walk" : `/members/${created.id}`);
+      // them back to today's walk. Admins keep their existing
+      // profile-on-create flow. Updates (a same-name match was found
+      // and we wrote into the existing row) follow the same redirect.
+      if (isVolunteerContext) {
+        const verb = result.action === "updated" ? "Updated" : "Added";
+        navigate(`/walk?flash=${encodeURIComponent(
+          `${verb} ${form.first_name} ${form.last_name}`,
+        )}`);
+      } else {
+        navigate(`/members/${result.id}`);
+      }
     } catch (e) {
       setError((e as Error).message);
     }

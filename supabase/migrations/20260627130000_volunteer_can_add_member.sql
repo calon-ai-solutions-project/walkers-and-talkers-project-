@@ -18,6 +18,20 @@ create policy "members_insert_volunteer" on members
     and region_id = auth_region()
   );
 
+-- Volunteers can also UPDATE members in their own region, so they can
+-- correct a typo or update emergency contact details without admin
+-- involvement. Still no DELETE — only admins can remove a member.
+create policy "members_update_volunteer" on members
+  for update
+  using (
+    auth_role() = 'volunteer'
+    and region_id = auth_region()
+  )
+  with check (
+    auth_role() = 'volunteer'
+    and region_id = auth_region()
+  );
+
 -- Volunteers also need to be able to read back the row they just created
 -- (the Supabase INSERT returns the inserted row, which goes through SELECT
 -- RLS). They already have members_select_region for their own region, so

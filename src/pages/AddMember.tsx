@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ import { useCreateMember } from "@/hooks/useMembers";
 
 export default function AddMember() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isVolunteerContext = location.pathname.startsWith("/walk");
   const createMember = useCreateMember();
   const [form, setForm] = useState({
     first_name: "",
@@ -40,7 +42,10 @@ export default function AddMember() {
     }
     try {
       const created = await createMember.mutateAsync(form);
-      navigate(`/members/${created.id}`);
+      // Volunteer kiosk has no member-profile view to land on, so send
+      // them back to today's walk instead. Admins keep their existing
+      // profile-on-create flow.
+      navigate(isVolunteerContext ? "/walk" : `/members/${created.id}`);
     } catch (e) {
       setError((e as Error).message);
     }

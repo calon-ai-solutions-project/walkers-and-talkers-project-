@@ -66,7 +66,12 @@ export default function PublicRegister() {
       );
       const data = await resp.json();
       if (!resp.ok || !data.ok) {
-        setError(data?.message || data?.error || "Couldn't register. Please try again.");
+        const code = data?.error ?? `http_${resp.status}`;
+        const detail = data?.detail ? ` (${data.detail})` : "";
+        setError(
+          data?.message ||
+            `Couldn't register: ${code}${detail}. Please try again or contact us.`,
+        );
         setLoading(false);
         return;
       }

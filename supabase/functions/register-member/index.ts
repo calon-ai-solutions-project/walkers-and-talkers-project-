@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
         emergency_contact_name: body.emergency_contact_name?.trim() || null,
         emergency_contact_phone: body.emergency_contact_phone?.trim() || null,
         region_id: region.id,
-        data_source: "public_form",
+        data_source: "online",
         active: true,
       })
       .select("id, member_no, first_name")

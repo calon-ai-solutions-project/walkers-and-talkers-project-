@@ -193,11 +193,22 @@ export function useCreateMember() {
         return { ...candidates[0], action: "updated" as const };
       }
 
-      // Next member number: WT-#### based on current count.
-      const { count } = await supabase
+      // Next member number: parse the highest existing WT-#### and add 1.
+      // Using count() would clash with existing numbers whenever a member
+      // has ever been deleted.
+      const { data: highest } = await supabase
         .from("members")
-        .select("id", { count: "exact", head: true });
-      const member_no = `WT-${String((count ?? 0) + 1).padStart(4, "0")}`;
+        .select("member_no")
+        .like("member_no", "WT-%")
+        .order("member_no", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      let nextNum = 1;
+      if (highest?.member_no) {
+        const m = String(highest.member_no).match(/WT-(\d+)/);
+        if (m) nextNum = parseInt(m[1], 10) + 1;
+      }
+      const member_no = `WT-${String(nextNum).padStart(4, "0")}`;
 
       const { data, error } = await supabase
         .from("members")

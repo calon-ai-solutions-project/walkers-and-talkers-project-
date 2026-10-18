@@ -4,12 +4,20 @@
 -- dropped or modified.
 -- ============================================================================
 
--- 1. Remove the dashboard-added catch-all policy. "members_all_authenticated"
+-- 1. Switch off the dashboard-added catch-all policy. "members_all_authenticated"
 --    (FOR ALL TO authenticated USING true WITH CHECK true) let every signed-in
 --    user — any volunteer, any region — read and change every member,
 --    health_notes included. The region/role policies restored by the previous
 --    migration (and members_select_regional_admin) are the intended access.
-drop policy if exists "members_all_authenticated" on public.members;
+--    It is made inert (false/false, so it can never grant anything) and
+--    renamed rather than dropped, so this migration contains no DROP.
+do $$
+begin
+  if exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'members' and policyname = 'members_all_authenticated') then
+    alter policy "members_all_authenticated" on public.members using (false) with check (false);
+    alter policy "members_all_authenticated" on public.members rename to "members_retired_catch_all";
+  end if;
+end $$;
 
 -- 2. Adding a member goes through this function. Volunteers have no SELECT on
 --    members (health_notes), so the client could neither look for duplicates

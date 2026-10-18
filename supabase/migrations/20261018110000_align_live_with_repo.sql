@@ -36,19 +36,22 @@ begin
 end;
 $$;
 
-drop trigger if exists members_assign_no on public.members;
-create trigger members_assign_no
+create or replace trigger members_assign_no
   before insert on public.members
   for each row execute function public.assign_member_no();
 
 -- 2. Desktop NFC writer API (20260614121100_card_desktop_api never ran on live).
+--    The writer may only activate a card that is pending (or confirm one that
+--    is already active); lost and revoked cards stay switched off.
 create or replace function public.activate_card_by_token(p_token text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare v_card cards%rowtype;
 begin
   select * into v_card from cards where token = p_token;
   if not found then return jsonb_build_object('status','not_found'); end if;
-  if v_card.state = 'revoked' then return jsonb_build_object('status','revoked'); end if;
+  if v_card.state not in ('pending', 'active') then
+    return jsonb_build_object('status', v_card.state);
+  end if;
   update cards set state = 'active' where id = v_card.id;
   return jsonb_build_object('status','ok', 'member_id', v_card.member_id);
 end; $$;
@@ -68,33 +71,42 @@ end; $$;
 revoke all on function public.log_card_read(text) from public;
 grant execute on function public.log_card_read(text) to anon, authenticated;
 
--- 3. Super admins can update any profile (20260614120700 never ran on live;
---    without it Settings → Team role changes silently updated 0 rows).
-drop policy if exists "profiles_update_super" on public.profiles;
-create policy "profiles_update_super" on public.profiles
-  for update using (auth_role() = 'super_admin')
-  with check (auth_role() = 'super_admin');
+-- 3 + 4. Policies the migrations define but live never got: super admins can
+--    update any profile (20260614120700 never ran on live, so Settings → Team
+--    role changes silently updated 0 rows), and the member policies. Created
+--    only when missing, so re-running this is a no-op.
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'profiles' and policyname = 'profiles_update_super') then
+    create policy "profiles_update_super" on public.profiles
+      for update using (auth_role() = 'super_admin')
+      with check (auth_role() = 'super_admin');
+  end if;
 
--- 4. The member policies the migrations define (missing on live).
-drop policy if exists "members_select_super" on public.members;
-create policy "members_select_super" on public.members
-  for select using (auth_role() = 'super_admin');
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'members' and policyname = 'members_select_super') then
+    create policy "members_select_super" on public.members
+      for select using (auth_role() = 'super_admin');
+  end if;
 
-drop policy if exists "members_modify_admin" on public.members;
-create policy "members_modify_admin" on public.members
-  for all using (
-    auth_role() = 'super_admin'
-    or (auth_role() = 'regional_admin' and region_id = auth_region())
-  );
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'members' and policyname = 'members_modify_admin') then
+    create policy "members_modify_admin" on public.members
+      for all using (
+        auth_role() = 'super_admin'
+        or (auth_role() = 'regional_admin' and region_id = auth_region())
+      );
+  end if;
 
-drop policy if exists "members_insert_volunteer" on public.members;
-create policy "members_insert_volunteer" on public.members
-  for insert with check (auth_role() = 'volunteer' and region_id = auth_region());
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'members' and policyname = 'members_insert_volunteer') then
+    create policy "members_insert_volunteer" on public.members
+      for insert with check (auth_role() = 'volunteer' and region_id = auth_region());
+  end if;
 
-drop policy if exists "members_update_volunteer" on public.members;
-create policy "members_update_volunteer" on public.members
-  for update
-  using (auth_role() = 'volunteer' and region_id = auth_region())
-  with check (auth_role() = 'volunteer' and region_id = auth_region());
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'members' and policyname = 'members_update_volunteer') then
+    create policy "members_update_volunteer" on public.members
+      for update
+      using (auth_role() = 'volunteer' and region_id = auth_region())
+      with check (auth_role() = 'volunteer' and region_id = auth_region());
+  end if;
+end $$;
 
 notify pgrst, 'reload schema';

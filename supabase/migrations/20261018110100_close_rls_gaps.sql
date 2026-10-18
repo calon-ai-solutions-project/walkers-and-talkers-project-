@@ -158,29 +158,14 @@ begin
   return jsonb_build_object('status', case when v_new then 'ok' else 'already' end, 'first_name', v_member.first_name);
 end; $$;
 
--- 6. The desktop writer may only activate a card that is pending (or confirm
---    one that is already active). Lost and revoked cards stay switched off.
-create or replace function public.activate_card_by_token(p_token text)
-returns jsonb language plpgsql security definer set search_path = public as $$
-declare v_card cards%rowtype;
-begin
-  select * into v_card from cards where token = p_token;
-  if not found then return jsonb_build_object('status','not_found'); end if;
-  if v_card.state not in ('pending', 'active') then
-    return jsonb_build_object('status', v_card.state);
-  end if;
-  update cards set state = 'active' where id = v_card.id;
-  return jsonb_build_object('status','ok', 'member_id', v_card.member_id);
-end; $$;
-
--- 7. Pin search_path on the remaining functions (advisor 0011): the
+-- 6. Pin search_path on the remaining functions (advisor 0011): the
 --    SECURITY DEFINER helpers could otherwise be pointed at look-alike objects.
 alter function public.auth_role() set search_path = public;
 alter function public.auth_region() set search_path = public;
 alter function public.trigger_set_updated_at() set search_path = public;
 alter function public.members_who_missed_session(uuid) set search_path = public;
 
--- 8. Nothing anonymous needs these. (auth_role/auth_region stay callable: RLS
+-- 7. Nothing anonymous needs these. (auth_role/auth_region stay callable: RLS
 --    policies evaluate them for anon requests too.)
 revoke execute on function public.manual_check_in(uuid, uuid) from public, anon;
 revoke execute on function public.claim_admin() from public, anon;

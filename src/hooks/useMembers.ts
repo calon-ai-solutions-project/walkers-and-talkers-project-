@@ -7,7 +7,7 @@ export function useBristolRegion() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("regions")
-        .select("id, name, slug, walk_day, walk_time")
+        .select("id, name, slug, walk_day, walk_time, contact_email")
         .eq("slug", "bristol")
         .single();
       if (error) throw error;
@@ -123,127 +123,56 @@ export type UpsertResult = {
   action: "created" | "updated";
 };
 
+type CreateMemberResponse = {
+  status: "created" | "updated" | "email_exists";
+  id: string;
+  member_no: string;
+  first_name?: string;
+  last_name?: string;
+};
+
 export function useCreateMember() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: NewMember): Promise<UpsertResult> => {
-      const { data: region, error: rErr } = await supabase
-        .from("regions")
-        .select("id")
-        .eq("slug", "bristol")
-        .single();
-      if (rErr || !region) throw rErr ?? new Error("Bristol region missing");
-
-      // Refuse if a member with the same email already exists — email is
-      // a stronger identity than name, and the public registration form
-      // (anyone can fill, so spammy duplicates would otherwise sneak in)
-      // needs this guard too.
-      const emailNorm = input.email?.trim().toLowerCase() ?? "";
-      if (emailNorm) {
-        const { data: emailMatch } = await supabase
-          .from("members")
-          .select("id, member_no, first_name, last_name")
-          .eq("region_id", region.id)
-          .ilike("email", emailNorm)
-          .limit(1)
-          .maybeSingle();
-        if (emailMatch) {
-          throw new Error(
-            `A member with this email already exists (${emailMatch.first_name} ${emailMatch.last_name}, ${emailMatch.member_no}). Please use a different email or update the existing record.`,
-          );
-        }
-      }
-
-      // Upsert by name: if a member with the same first + last name already
-      // exists in this region (case-insensitive, trimmed), update them
-      // instead of creating a duplicate. Multiple matches → skip the
-      // update and create a new row so we don't silently overwrite the
-      // wrong person.
-      const firstNorm = input.first_name.trim();
-      const lastNorm = input.last_name.trim();
-      const { data: candidates } = await supabase
-        .from("members")
-        .select("id, member_no")
-        .eq("region_id", region.id)
-        .ilike("first_name", firstNorm)
-        .ilike("last_name", lastNorm)
-        .limit(2);
-
-      if (candidates && candidates.length === 1) {
-        // Update — only write fields the user actually filled in, so an
-        // accidentally-blank field doesn't wipe existing data.
-        const updates: Record<string, string | null> = {};
-        if (input.phone?.trim()) updates.phone = input.phone.trim();
-        if (input.email?.trim()) updates.email = input.email.trim();
-        if (input.address_line1?.trim())
-          updates.address_line1 = input.address_line1.trim();
-        if (input.postcode?.trim()) updates.postcode = input.postcode.trim();
-        if (input.emergency_contact_name?.trim())
-          updates.emergency_contact_name = input.emergency_contact_name.trim();
-        if (input.emergency_contact_phone?.trim())
-          updates.emergency_contact_phone = input.emergency_contact_phone.trim();
-
-        if (Object.keys(updates).length > 0) {
-          const { error: upErr } = await supabase
-            .from("members")
-            .update(updates)
-            .eq("id", candidates[0].id);
-          if (upErr) throw upErr;
-        }
-        return { ...candidates[0], action: "updated" as const };
-      }
-
-      // Next member number: parse the highest existing WT-#### and add 1.
-      // Using count() would clash with existing numbers whenever a member
-      // has ever been deleted.
-      const { data: highest } = await supabase
-        .from("members")
-        .select("member_no")
-        .like("member_no", "WT-%")
-        .order("member_no", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      let nextNum = 1;
-      if (highest?.member_no) {
-        const m = String(highest.member_no).match(/WT-(\d+)/);
-        if (m) nextNum = parseInt(m[1], 10) + 1;
-      }
-      const member_no = `WT-${String(nextNum).padStart(4, "0")}`;
-
-      const { data, error } = await supabase
-        .from("members")
-        .insert({
-          member_no,
-          first_name: input.first_name,
-          last_name: input.last_name,
-          phone: input.phone || null,
-          email: input.email || null,
-          address_line1: input.address_line1 || null,
-          postcode: input.postcode || null,
-          emergency_contact_name: input.emergency_contact_name || null,
-          emergency_contact_phone: input.emergency_contact_phone || null,
-          region_id: region.id,
-          data_source: input.data_source || "admin_entry",
-          active: true,
-        })
-        .select("id, member_no")
-        .single();
+      // The create_member RPC does the duplicate-email check, the
+      // update-by-name upsert and the member number server-side, with the
+      // caller's role and region enforced. Volunteers have no read access to
+      // the members table (health notes), so this can't be done client-side.
+      const { data, error } = await supabase.rpc("create_member", {
+        p_first_name: input.first_name,
+        p_last_name: input.last_name,
+        p_phone: input.phone,
+        p_email: input.email,
+        p_address_line1: input.address_line1,
+        p_postcode: input.postcode,
+        p_emergency_contact_name: input.emergency_contact_name,
+        p_emergency_contact_phone: input.emergency_contact_phone,
+        p_data_source: input.data_source,
+      });
       if (error) throw error;
+      const result = data as unknown as CreateMemberResponse;
+
+      if (result.status === "email_exists") {
+        throw new Error(
+          `A member with this email already exists (${result.first_name} ${result.last_name}, ${result.member_no}). Please use a different email or update the existing record.`,
+        );
+      }
 
       // Phase 5: fire the welcome email if the member has an address. Best-effort
       // — a mail failure must never fail member creation. The send-email Edge
-      // Function (deployed --no-verify-jwt) skips silently if no email/opted out.
-      if (input.email && data?.id) {
+      // Function skips silently if no email/opted out.
+      if (result.status === "created" && input.email) {
         try {
           await supabase.functions.invoke("send-email", {
-            body: { template: "welcome", member_id: data.id },
+            body: { template: "welcome", member_id: result.id },
           });
         } catch {
           // swallow — member is saved; welcome email is non-critical
         }
       }
 
-      return { ...data, action: "created" as const };
+      return { id: result.id, member_no: result.member_no, action: result.status };
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["members"] });

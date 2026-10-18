@@ -50,7 +50,7 @@ export function useSessionAttendees(sessionId?: string) {
         .order("checked_in_at", { ascending: false });
       if (error) throw error;
       const ids = (rows ?? []).map((r) => r.member_id);
-      if (!ids.length) return [] as { name: string; time: string }[];
+      if (!ids.length) return [] as { member_id: string; name: string; time: string }[];
       const { data: members } = await supabase
         .from("members_safe")
         .select("id, first_name, last_name")

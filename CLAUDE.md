@@ -22,18 +22,24 @@ people, not just a bug.
    `supabase/migrations/`. Never edit the schema via the dashboard — you lose
    reproducibility and rollback.
 6. **Re-generate types after every schema change:**
-   `supabase gen types typescript --linked > src/types/database.ts`.
+   `npm run gen:types` (writes `src/integrations/supabase/types.ts`).
    Otherwise the TypeScript types drift from the live schema.
+7. **Run the RLS test after every policy or function change:**
+   `DATABASE_URL=... npm run test:db` (`supabase/tests/rls_adversarial.sql`,
+   always rolls back). Every check must pass.
 
 ## Project conventions
 
-- React + Vite + TypeScript + Tailwind. Plain Tailwind (no shadcn yet).
+- React + Vite + TypeScript + Tailwind, shadcn/ui components in `src/components/ui`.
 - Auth: Supabase email + password. Admin accounts are created in the Supabase
   dashboard (no public sign-up). (Originally magic-link; switched for simpler,
   reliable admin sign-in without SMTP setup.)
-- Data fetching goes through the typed client in `src/lib/supabase.ts`.
+- Data fetching goes through the typed client in
+  `src/integrations/supabase/client.ts` (types in `types.ts` next to it).
 - Auth/session state lives in `src/lib/auth.tsx` (`useAuth`).
-- Route guards live in `src/components/RequireAuth.tsx`.
+- Route guards (`AuthGate`, `RequireAuthLayout`, `RoleGate`) live in `src/App.tsx`.
+- Volunteers have no direct access to the `members` table; they read
+  `members_safe` and add members through the `create_member` RPC.
 - Roles: `super_admin` (you, Andy, Emma), `regional_admin`, `volunteer`.
 - DB-enforced access control is the source of truth; the UI is **not** a
   security boundary.

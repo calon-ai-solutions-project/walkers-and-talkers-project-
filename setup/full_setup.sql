@@ -1,4 +1,10 @@
 -- ============================================================================
+-- DEPRECATED — DO NOT RUN. Kept for history only.
+-- This snapshot predates most of supabase/migrations/ (no member numbering,
+-- email opt-out, must_change_password, create_member RPC or the 2026-10-18
+-- RLS fixes). Running it on a real project leaves security holes. Use
+-- `supabase db push` with the migrations instead.
+-- ============================================================================
 -- Walkers & Talkers — ONE-SHOT SETUP
 -- Paste this whole file into Supabase → SQL Editor → Run. Safe to re-run.
 --

@@ -9,8 +9,12 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:db": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f supabase/tests/rls_adversarial.sql",
+    "gen:types": "supabase gen types typescript --linked > src/integrations/supabase/types.ts",
+    "import:members": "tsx scripts/import_members.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

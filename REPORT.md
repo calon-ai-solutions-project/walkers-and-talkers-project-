@@ -114,6 +114,11 @@ local auth service and the Edge Functions under Deno.
 
 ## Still needs you
 
+> **Order matters:** apply the 2 migrations to live **before** merging this
+> PR. The new frontend calls the `create_member` RPC, which only exists once
+> they are applied. Merged first, "Add member" would fail in production (the
+> Vercel preview of this branch already talks to live and shows exactly that).
+
 1. **Approve applying the 2 migrations to live.** Neither can lose data: they
    only create or replace functions, policies, a sequence and a trigger, and
    change grants. The single `DROP POLICY` removes a permission, not data.

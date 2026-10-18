@@ -210,6 +210,8 @@ export default function MemberDirectory() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
+                        aria-label={`View ${m.name}`}
+                        title="View"
                         onClick={(e) => {
                           e.stopPropagation();
                           navigate(`/members/${m.id}`);
@@ -221,6 +223,8 @@ export default function MemberDirectory() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive hover:text-destructive"
+                        aria-label={`Delete ${m.name}`}
+                        title="Delete"
                         onClick={(e) => {
                           e.stopPropagation();
                           void handleDelete(m.id, m.name);

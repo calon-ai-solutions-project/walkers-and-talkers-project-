@@ -116,9 +116,8 @@ revoke all on public.session_attendees_view from anon, authenticated;
 
 -- 4. A user could change their own region_id (only role was pinned), then read
 --    another region's members, sessions, attendance and cards. Pin both.
-drop policy if exists "profiles_update_own" on public.profiles;
-create policy "profiles_update_own" on public.profiles
-  for update using (id = auth.uid())
+alter policy "profiles_update_own" on public.profiles
+  using (id = auth.uid())
   with check (
     id = auth.uid()
     and role = (select p.role from public.profiles p where p.id = auth.uid())

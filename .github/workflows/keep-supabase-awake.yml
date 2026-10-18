@@ -1,0 +1,70 @@
+name: Keep Supabase awake
+
+# Free Supabase projects pause after 7 days without activity (this one paused
+# in September, even with the pg_cron nudge job running). A daily read through
+# the public REST API from outside counts as activity.
+#
+# It uses the public anon key: from the SUPABASE_ANON_KEY repo secret if set,
+# otherwise read from the live site's JS bundle, which ships it to every
+# browser anyway. Nothing secret is stored in this file. The query runs as
+# anon, so RLS returns no rows.
+#
+# A failed run means the project is paused or unreachable: restore it from the
+# Supabase dashboard.
+
+on:
+  schedule:
+    - cron: "23 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: https://tbxqshzpoukyxlgfubmw.supabase.co
+      SITE_URL: https://walkers-and-talkers-project.vercel.app
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+    steps:
+      - name: Query the database through the REST API
+        run: |
+          set -euo pipefail
+          key="${SUPABASE_ANON_KEY:-}"
+          if [ -z "$key" ]; then
+            html=$(curl -fsS --retry 3 "$SITE_URL/")
+            for path in $(grep -oE '/assets/[A-Za-z0-9._-]+\.js' <<<"$html" | sort -u); do
+              key=$(curl -fsS --retry 3 "$SITE_URL$path" \
+                | grep -oE 'sb_publishable_[A-Za-z0-9_-]+|eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+' \
+                | head -n1 || true)
+              [ -n "$key" ] && break
+            done
+          fi
+          if [ -z "$key" ]; then
+            echo "::error::No anon key: set the SUPABASE_ANON_KEY secret or check $SITE_URL"
+            exit 1
+          fi
+          echo "::add-mask::$key"
+
+          # Only ever use a public key. A JWT must carry role "anon".
+          if [[ "$key" == eyJ* ]]; then
+            role=$(python3 -c 'import base64, json, sys
+          p = sys.argv[1].split(".")[1]
+          print(json.loads(base64.urlsafe_b64decode(p + "=" * (-len(p) % 4))).get("role", ""))' "$key")
+            if [ "$role" != "anon" ]; then
+              echo "::error::Refusing to use a key with role '$role'"
+              exit 1
+            fi
+          fi
+
+          code=$(curl -sS --retry 3 -o body.json -w '%{http_code}' \
+            -H "apikey: $key" \
+            "$SUPABASE_URL/rest/v1/regions?select=id&limit=1")
+          echo "REST status: $code"
+          if [ "$code" != "200" ]; then
+            cat body.json; echo
+            echo "::error::Supabase did not answer 200. Is the project paused?"
+            exit 1
+          fi

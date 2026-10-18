@@ -15,7 +15,7 @@ import * as XLSX from "xlsx";
 import { randomBytes } from "node:crypto";
 import { config } from "dotenv";
 import path from "node:path";
-import type { Database } from "../src/types/database";
+import type { Database } from "../src/integrations/supabase/types";
 
 // Load env from .env.local (gitignored).
 config({ path: path.resolve(process.cwd(), ".env.local") });

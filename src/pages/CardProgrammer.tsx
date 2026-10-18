@@ -92,12 +92,12 @@ export default function CardProgrammer() {
 
       <div className="mb-6">
         <h1 className="page-header">Program card</h1>
-        <p className="page-subheader">
+        <div className="page-subheader">
           {memberName} · {card.member?.member_no} ·{" "}
           <Badge variant={card.state === "active" ? "default" : "secondary"}>
             {card.state}
           </Badge>
-        </p>
+        </div>
       </div>
 
       <Tabs defaultValue="nfc" className="mb-6">

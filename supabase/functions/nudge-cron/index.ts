@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ ok: true, today, results }), { status: 200 });
   } catch (error) {
-    return new Response(JSON.stringify({ ok: false, error: error.message }), { status: 500 });
+    return new Response(JSON.stringify({ ok: false, error: (error as Error).message }), { status: 500 });
   }
 });
 

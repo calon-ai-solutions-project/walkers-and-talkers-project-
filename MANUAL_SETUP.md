@@ -20,15 +20,15 @@ must be done by a human with access. They are ordered. Tick them off.
       password in your password manager.
 - [ ] `supabase login`
 - [ ] `supabase link --project-ref <your-project-ref>`
-- [ ] `supabase db push` — applies the three migrations in
-      `supabase/migrations/` (schema → RLS → volunteer health_notes fix).
+- [ ] `supabase db push` — applies every migration in `supabase/migrations/`.
+      (Do **not** paste `setup/full_setup.sql` instead: it is out of date.)
 - [ ] **Immediately regenerate types from the live schema and commit:**
       ```bash
-      supabase gen types typescript --linked > src/types/database.ts
+      npm run gen:types   # writes src/integrations/supabase/types.ts
       ```
-      This replaces the hand-authored `src/types/database.ts`. Skipping it lets
-      the schema and the TypeScript types drift, which produces false-positive
-      `npm run typecheck` passes for things that fail at runtime.
+      Skipping it lets the schema and the TypeScript types drift, which
+      produces false-positive `npm run typecheck` passes for things that fail
+      at runtime.
 - [ ] Seed Bristol: run `supabase/seed.sql` in the SQL editor (or it runs via
       `supabase db reset` locally).
 - [ ] Confirm all 8 tables exist with RLS enabled and policies present (no
@@ -99,8 +99,7 @@ loop end to end before building the by-name fallback.
 - [ ] Apply the new migration: `supabase db push` (adds `check_in_by_token`,
       the `checkin_attempts` audit table, and grants). No Edge Function to
       deploy — the RPC runs inside Postgres.
-- [ ] Regenerate types: `supabase gen types typescript --linked > src/types/database.ts`
-      and commit (replaces the hand-authored stub for the new function/table).
+- [ ] Regenerate types: `npm run gen:types` and commit.
 - [ ] Activate the two sample cards (imported cards start `pending`):
       ```sql
       update cards set state = 'active' where token in ('<token1>', '<token2>');

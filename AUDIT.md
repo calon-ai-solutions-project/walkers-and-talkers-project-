@@ -1,7 +1,7 @@
 # AUDIT — Walkers & Talkers
 
 Date: 2026-10-18 · Supabase project `tbxqshzpoukyxlgfubmw` ("walkers-and-talkers-project-")
-Phase 1 was read-only. Status column is updated during the Phase 2 fix loop.
+Phase 1 was read-only. Statuses below were updated during the Phase 2 fix loop.
 
 ## 0. Backup (taken before anything else)
 
@@ -144,47 +144,56 @@ Supabase region is **ap-northeast-1 (Tokyo)**; the plan says London/Ireland.
 
 ## 9. Issues (ranked)
 
-Status: OPEN · FIXED · NEEDS-YOU (needs your account, keys or a decision)
+Status key:
+- **FIXED** — changed in git and verified here.
+- **FIXED (local)** — changed in git and verified on the restored copy of live, but **not yet applied to the live Supabase project** (needs your OK, see REPORT.md).
+- **NEEDS-YOU** — needs your account, keys or a decision.
 
 ### BLOCKER
 
-| ID | Issue | Where | Root cause | Proposed fix | Status |
+| ID | Issue | Where | Root cause | Fix | Status |
 |---|---|---|---|---|---|
 | B1 | Whole app down: Supabase project was paused | Supabase project | Free plan pauses after 7 days idle; cron last ran 2026-09-09; services restarted today 09:36 | You restored it. Prevent: Pro plan, or regular activity | NEEDS-YOU |
-| B2 | **Any logged-in user can read/write every member incl. health notes** | live policy `members_all_authenticated` (not in git) | Added in the dashboard to "fix" B3; replaced the intended region/role policies. Fails `tests/rls_results.md` rows 1, 2, 5 | Migration: drop it, restore the 4 intended `members_*` policies | OPEN |
-| B3 | Volunteer "Add member" cannot work under correct RLS | `src/hooks/useMembers.ts:143-230` | Reads `members` for duplicate checks + next number, and inserts with `.select()`. Volunteers have no SELECT on `members` by design (health notes), so lookups see nothing and insert-returning is rejected | SECURITY DEFINER RPC `create_member` (role + region checks, dedupe, numbering, no health notes); hook calls it | OPEN |
-| B4 | Type check fails (40 errors) | `src/integrations/supabase/types.ts` | File belongs to a different (Lovable template) schema: `regions.colour`, `profiles.first_name`, `app_role` enum… | Regenerate from live; fix the 1 real error; remove unused `ui/chart.tsx` | OPEN |
-| B5 | **Anonymous internet users can list attendee names + emails** | `supabase/migrations/20260614121300_nudge_engine_schema.sql:50` | `session_attendees_view` is a definer-rights view (bypasses RLS) and anon/authenticated hold SELECT on it | `security_invoker = true`, revoke from anon/authenticated (only `nudge-cron`, using the service key, reads it) | OPEN |
-| B6 | `send-email` has no caller authentication | `supabase/functions/send-email/index.ts:29` | `verify_jwt=false` and no check in code. Repo version adds `admin_invite` with arbitrary `to_email` + `login_url` → would be an open phishing relay from the charity's verified domain if deployed | Require the service key (server callers) or a staff user JWT (browser welcome email); `admin_invite` service-key only | OPEN |
+| B2 | **Any logged-in user could read/write every member incl. health notes** | live policy `members_all_authenticated` (not in git) | Added in the dashboard to "fix" B3 | `20261018110100_close_rls_gaps.sql` drops it; `..110000_align_live_with_repo.sql` restores the intended policies. RLS test V01/V02/V06/V07/R02/R03 | FIXED (local) |
+| B3 | Volunteer "Add member" can't work under correct RLS | `src/hooks/useMembers.ts` | Client read `members` (no volunteer access) and inserted with `.select()` | `create_member` SECURITY DEFINER RPC + hook calls it. Unit tests; RLS V21–V27; browser: old code → HTTP 403, new code → member created | FIXED (local) |
+| B4 | Type check failed (40 errors) | `src/integrations/supabase/types.ts` | Types from a different (template) schema | Regenerated from live (+3 new RPCs). 40 → 0 errors | FIXED |
+| B5 | **Anonymous users could list attendee names + emails** | `supabase/migrations/20260614121300_nudge_engine_schema.sql:50` | Definer-rights view granted to anon/authenticated | `security_invoker = true`, revoked from anon/authenticated. RLS A03/V18 | FIXED (local) |
+| B6 | `send-email` had no caller authentication | `supabase/functions/send-email/index.ts` | `verify_jwt=false`, no check in code | Requires service key or a staff JWT; staff may only send `welcome`. Verified under Deno: 401/403/allowed | FIXED (not deployed) |
+| B7 | **Anonymous callers could check any member in by name** (found in Phase 2) | `manual_check_in` (migration `20260614120600`) | `v_role not in (...)` is NULL for no role, so the guard was skipped | Guard fixed + anon EXECUTE revoked. RLS A09 | FIXED (local) |
 
 ### MAJOR
 
-| ID | Issue | Where | Root cause | Proposed fix | Status |
-|---|---|---|---|---|---|
-| M1 | No migration history on live | `supabase_migrations` missing | Schema pasted via SQL editor | Record the 16 existing versions as applied, then apply new fixes as migrations | OPEN |
-| M2 | NFC writer can't activate cards; Team role changes silently do nothing | live missing `activate_card_by_token`, `log_card_read`, `profiles_update_super` | Migration `20260614121100` / `120700` never run on live | Apply them (in the alignment migration) | OPEN |
-| M3 | Server-side member numbering exists only in live | live `assign_member_no()`, trigger, `member_no_seq` | Added in dashboard | Capture in a migration (with `search_path`) | OPEN |
-| M4 | A user can move themselves to another region | `supabase/migrations/20260614120100_rls_policies.sql:26` | `profiles_update_own` pins `role` but not `region_id` | Pin `region_id` in WITH CHECK | OPEN |
-| M5 | Edge Functions out of sync with git | deployed vs `supabase/functions/*` | Deployed piecemeal. Invite emails fail today (deployed `send-email` has no `admin_invite`) | Merge `send-email` (CORS + admin_invite + auth), add `delete-user` to git, redeploy | OPEN |
-| M6 | Service-role JWT stored inline in cron job SQL | `cron.job` 1 | Key pasted into `cron.schedule` | Move to Vault + rotate the key | NEEDS-YOU |
-| M7 | Public `/signup` route + email auto-promoted to super_admin | `src/App.tsx:113`, `supabase/migrations/20260614120500_profile_autocreate.sql:14` | Leftover from template / bootstrap | Remove `/signup` route; you confirm sign-ups are disabled in Auth settings; decide on hard-coded email | OPEN |
-| M8 | Blank white screen when env vars are missing | `src/integrations/supabase/client.ts:11` | Throws during module import | Show a readable configuration error instead | OPEN |
-| M9 | SECURITY DEFINER helpers without `search_path` | `auth_role`, `auth_region` (+3 others) | Advisor `function_search_path_mutable` | `set search_path = public` | OPEN |
-| M10 | Data stored in Tokyo region | Supabase project | Created in ap-northeast-1 | New project in eu-west-2 + migrate (your decision) | NEEDS-YOU |
+| ID | Issue | Where | Fix | Status |
+|---|---|---|---|---|
+| M1 | No migration history on live | `supabase_migrations` missing | Mark the 16 existing migrations applied, then push the 2 new ones (commands in REPORT.md) | NEEDS-YOU |
+| M2 | NFC writer can't activate cards; Team role changes silently did nothing | live missing `activate_card_by_token`, `log_card_read`, `profiles_update_super` | Re-created in `20261018110000_align_live_with_repo.sql`. RLS A11/S03 | FIXED (local) |
+| M3 | Member numbering trigger existed only in live | live `assign_member_no`, `member_no_seq` | Captured in `20261018110000…` with `search_path`; sequence keeps its value (9) | FIXED (local) |
+| M4 | A user could move themselves to another region and read its data | `profiles_update_own` | `region_id` pinned in WITH CHECK. RLS V10 | FIXED (local) |
+| M5 | Edge Functions out of sync with git | deployed vs `supabase/functions/*` | `send-email` merged (deployed copy + CORS + admin_invite); `delete-user` added to git; all 5 pass `deno check` | FIXED (not deployed) |
+| M6 | Cron job sends the public **anon** key to `nudge-cron` (not the service key, as first assumed) | `cron.job` 1 | Low risk (anon key is public); to lock `nudge-cron` down, put a secret in Vault — steps in REPORT.md | NEEDS-YOU |
+| M7 | Public `/signup` page; email auto-promoted to super_admin on sign-up | `src/App.tsx`, `20260614120500_profile_autocreate.sql:14` | `/signup` route + page removed. Confirm sign-ups are disabled in Auth settings; decide on the hard-coded email | FIXED (route) / NEEDS-YOU |
+| M8 | Blank white screen when env vars missing | `src/integrations/supabase/client.ts:11` | `main.tsx` shows which variables are missing (verified in Chromium) | FIXED |
+| M9 | SECURITY DEFINER helpers without `search_path` | `auth_role`, `auth_region` (+3) | `set search_path = public` in `…110100` | FIXED (local) |
+| M10 | Data stored in Tokyo region | Supabase project | New project in eu-west-2 + migrate | NEEDS-YOU |
+| M11 | Saving region settings wiped the contact email (found in Phase 2) | `src/hooks/useMembers.ts:10` | `contact_email` added to the select. Browser: value shown and kept after save | FIXED |
+| M12 | Member import script could not run (found in Phase 2) | `scripts/import_members.ts:18` | Imported a non-existent types file; path fixed, `npm run import:members` added | FIXED |
+| M13 | Deployed email copy newer than git (found in Phase 2) | `send-email` | Deployed templates/footer are now the ones in git | FIXED |
 
 ### MINOR
 
-| ID | Issue | Where | Proposed fix | Status |
-|---|---|---|---|---|
-| m1 | Lint errors (empty interfaces, `require`) | `ui/command.tsx:24`, `ui/textarea.tsx:5`, `tailwind.config.ts:99` | type aliases / ESM import | OPEN |
-| m2 | No real tests | `src/test/example.test.ts` | Unit tests for hooks + SQL RLS/RPC test suite | OPEN |
-| m3 | npm audit findings | `package-lock.json` | `npm audit fix` (non-breaking only) | OPEN |
-| m4 | Docs point to files/scripts that don't exist | `CLAUDE.md` (`src/types/database.ts`, `src/lib/supabase.ts`, `RequireAuth.tsx`), `MANUAL_SETUP.md` (`npm run typecheck`, `import:members`) | Add the scripts, correct paths | OPEN |
-| m5 | `setup/full_setup.sql` is stale and unsafe to run | `setup/full_setup.sql` | Mark deprecated | OPEN |
-| m6 | `VolunteerCheckIn` attendee type missing `member_id` | `src/hooks/useSessions.ts:53` | Fix type | OPEN |
-| m7 | `nudge-cron` callable with the public anon key | deployed `verify_jwt=true` only | Check the service key in code | OPEN |
-| m8 | `rapid-api` stray duplicate function | deployed only | Delete (needs your OK) | NEEDS-YOU |
-| m9 | Leaked-password protection off; `pg_net` in `public` schema | Auth settings / extensions | Dashboard toggle; leave `pg_net` (moving it is risky) | NEEDS-YOU |
-| m10 | Perf advisors (unindexed FKs, initplan, permissive policies) | live DB | Not needed at this size | OPEN (deferred) |
-| m11 | 1.1 MB single bundle | build | Route-level code splitting (later) | OPEN (deferred) |
-| m12 | `activate_card_by_token` can re-activate a `lost` card | migration `20260614121100` | Only allow `pending` | OPEN |
+| ID | Issue | Fix | Status |
+|---|---|---|---|
+| m1 | Lint errors | 3 → 0 (7 shadcn fast-refresh warnings remain) | FIXED |
+| m2 | No real tests | 13 Vitest unit tests + 50-check SQL RLS suite + 19-step browser walkthrough | FIXED |
+| m3 | npm audit findings | Non-breaking fixes: 25 → 18; rest needs vite 8 / vitest 5 majors or has no fix (xlsx, CLI only) | FIXED (partly) |
+| m4 | Docs pointed to missing files/scripts | `typecheck`, `test:db`, `gen:types`, `import:members` scripts; paths corrected | FIXED |
+| m5 | `setup/full_setup.sql` stale and unsafe | Marked DEPRECATED | FIXED |
+| m6 | Attendee type missing `member_id` | Fixed | FIXED |
+| m7 | `nudge-cron` callable with the anon key | See M6 | NEEDS-YOU |
+| m8 | `rapid-api` stray duplicate of invite-admin | Delete it in Edge Functions (your OK) | NEEDS-YOU |
+| m9 | Leaked-password protection off; `pg_net` in `public` | Dashboard toggle; leave `pg_net` | NEEDS-YOU |
+| m10 | Perf advisors (unindexed FKs, initplan, permissive policies) | Not needed at this size | DEFERRED |
+| m11 | 1.1 MB single bundle | Route-level code splitting later | DEFERRED |
+| m12 | `activate_card_by_token` could re-activate a lost card | Only pending/active now. RLS A12 | FIXED (local) |
+| m13 | React DOM-nesting error on Card Programmer (found in Phase 2) | `<p>` → `<div>` | FIXED |
+| m14 | Icon-only View/Delete buttons had no accessible name (found in Phase 2) | `aria-label` + `title` | FIXED |

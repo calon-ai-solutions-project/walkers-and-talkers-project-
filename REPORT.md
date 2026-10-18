@@ -45,8 +45,8 @@ Full issue list with file/line, root cause and status: [`AUDIT.md`](AUDIT.md).
 
 ## What was missing → what I added
 
-- `supabase/migrations/20261018110000_align_live_with_repo.sql` and
-  `20261018110100_close_rls_gaps.sql`.
+- `supabase/migrations/20261018112732_align_live_with_repo.sql` and
+  `20261018113246_close_rls_gaps.sql`.
 - `supabase/tests/rls_adversarial.sql`: the `tests/rls_results.md` checklist
   as an automated 50-check test. It impersonates anon, volunteers in two
   regions, a regional admin and a super admin, and **always rolls back**.
@@ -171,7 +171,7 @@ supabase migration repair --status applied \
   20260614120500 20260614120600 20260614120700 20260614120800 20260614120900 \
   20260614121000 20260614121100 20260614121200 20260614121300 \
   20260627120000 20260627130000
-supabase db push                # applies only 20261018110000 and 20261018110100
+supabase db push                # applies only 20261018112732 and 20261018113246
 DATABASE_URL="<session pooler connection string>" npm run test:db   # must print 50 of 50
 npm run gen:types && git diff src/integrations/supabase/types.ts     # expect no or cosmetic changes; commit
 ```

@@ -154,7 +154,7 @@ Status key:
 | ID | Issue | Where | Root cause | Fix | Status |
 |---|---|---|---|---|---|
 | B1 | Whole app down: Supabase project was paused | Supabase project | Free plan pauses after 7 days idle; cron last ran 2026-09-09; services restarted today 09:36 | You restored it. Prevent: Pro plan, or regular activity | NEEDS-YOU |
-| B2 | **Any logged-in user could read/write every member incl. health notes** | live policy `members_all_authenticated` (not in git) | Added in the dashboard to "fix" B3 | `20261018110100_close_rls_gaps.sql` drops it; `..110000_align_live_with_repo.sql` restores the intended policies. RLS test V01/V02/V06/V07/R02/R03 | FIXED (local) |
+| B2 | **Any logged-in user could read/write every member incl. health notes** | live policy `members_all_authenticated` (not in git) | Added in the dashboard to "fix" B3 | `20261018113246_close_rls_gaps.sql` drops it; `..110000_align_live_with_repo.sql` restores the intended policies. RLS test V01/V02/V06/V07/R02/R03 | FIXED (local) |
 | B3 | Volunteer "Add member" can't work under correct RLS | `src/hooks/useMembers.ts` | Client read `members` (no volunteer access) and inserted with `.select()` | `create_member` SECURITY DEFINER RPC + hook calls it. Unit tests; RLS V21–V27; browser: old code → HTTP 403, new code → member created | FIXED (local) |
 | B4 | Type check failed (40 errors) | `src/integrations/supabase/types.ts` | Types from a different (template) schema | Regenerated from live (+3 new RPCs). 40 → 0 errors | FIXED |
 | B5 | **Anonymous users could list attendee names + emails** | `supabase/migrations/20260614121300_nudge_engine_schema.sql:50` | Definer-rights view granted to anon/authenticated | `security_invoker = true`, revoked from anon/authenticated. RLS A03/V18 | FIXED (local) |
@@ -166,8 +166,8 @@ Status key:
 | ID | Issue | Where | Fix | Status |
 |---|---|---|---|---|
 | M1 | No migration history on live | `supabase_migrations` missing | Mark the 16 existing migrations applied, then push the 2 new ones (commands in REPORT.md) | NEEDS-YOU |
-| M2 | NFC writer can't activate cards; Team role changes silently did nothing | live missing `activate_card_by_token`, `log_card_read`, `profiles_update_super` | Re-created in `20261018110000_align_live_with_repo.sql`. RLS A11/S03 | FIXED (local) |
-| M3 | Member numbering trigger existed only in live | live `assign_member_no`, `member_no_seq` | Captured in `20261018110000…` with `search_path`; sequence keeps its value (9) | FIXED (local) |
+| M2 | NFC writer can't activate cards; Team role changes silently did nothing | live missing `activate_card_by_token`, `log_card_read`, `profiles_update_super` | Re-created in `20261018112732_align_live_with_repo.sql`. RLS A11/S03 | FIXED (local) |
+| M3 | Member numbering trigger existed only in live | live `assign_member_no`, `member_no_seq` | Captured in `20261018112732…` with `search_path`; sequence keeps its value (9) | FIXED (local) |
 | M4 | A user could move themselves to another region and read its data | `profiles_update_own` | `region_id` pinned in WITH CHECK. RLS V10 | FIXED (local) |
 | M5 | Edge Functions out of sync with git | deployed vs `supabase/functions/*` | `send-email` merged (deployed copy + CORS + admin_invite); `delete-user` added to git; all 5 pass `deno check` | FIXED (not deployed) |
 | M6 | Cron job sends the public **anon** key to `nudge-cron` (not the service key, as first assumed) | `cron.job` 1 | Low risk (anon key is public); to lock `nudge-cron` down, put a secret in Vault — steps in REPORT.md | NEEDS-YOU |

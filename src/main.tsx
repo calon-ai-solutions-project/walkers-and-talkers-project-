@@ -1,15 +1,12 @@
 import { createRoot } from "react-dom/client";
+import { missingSupabaseEnv } from "./lib/env";
 import "./index.css";
 
 const root = createRoot(document.getElementById("root")!);
 
 // The Supabase client throws at import time when these are missing, which
 // leaves a blank white page with no clue why. Check first and say so.
-const missing = [
-  !import.meta.env.VITE_SUPABASE_URL && "VITE_SUPABASE_URL",
-  !(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? import.meta.env.VITE_SUPABASE_ANON_KEY) &&
-    "VITE_SUPABASE_ANON_KEY (or VITE_SUPABASE_PUBLISHABLE_KEY)",
-].filter(Boolean) as string[];
+const missing = missingSupabaseEnv(import.meta.env);
 
 if (missing.length) {
   root.render(

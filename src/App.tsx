@@ -13,7 +13,6 @@ import { AppLayout } from "@/components/AppLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import Login from "./pages/Login";
-import Signup from "./pages/Signup";
 import AuthCallback from "./pages/AuthCallback";
 import ChangePasswordFirst from "./pages/ChangePasswordFirst";
 import CheckInPublic from "./pages/CheckInPublic";
@@ -110,7 +109,6 @@ const App = () => (
             {/* Public registration form — admins share this URL */}
             <Route path="/register" element={<PublicRegister />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route
               path="/auth/change-password"

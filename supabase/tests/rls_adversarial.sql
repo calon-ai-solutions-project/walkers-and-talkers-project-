@@ -22,6 +22,7 @@ declare
   u_vol_t uuid := gen_random_uuid();   -- volunteer in the second region
   u_ra_b uuid := gen_random_uuid();    -- Bristol regional_admin
   u_sa uuid := gen_random_uuid();      -- super_admin
+  u_new uuid := gen_random_uuid();     -- brand-new account (default role)
   m_b uuid := gen_random_uuid();       -- Bristol member
   m_t uuid := gen_random_uuid();       -- second-region member
   s_b uuid := gen_random_uuid();
@@ -66,6 +67,8 @@ begin
     update public.profiles set role = 'volunteer', region_id = v_test_region where id = u_vol_t;
     update public.profiles set role = 'regional_admin', region_id = v_bristol where id = u_ra_b;
     update public.profiles set role = 'super_admin', region_id = null where id = u_sa;
+    -- No email address may grant a role on sign-up (one used to be hard-coded).
+    insert into auth.users (id, email) values (u_new, 'AlomHabib309@gmail.com');
 
     insert into public.members (id, member_no, first_name, last_name, email, region_id, health_notes, active) values
       (m_b, 'RLSTEST-B', 'Rlsb', 'Member', 'rls-member-b@example.invalid', v_bristol, 'TEST-HN', true),
@@ -143,7 +146,9 @@ begin
         ('S01 super_admin: sees all regions',       u_sa, format('select count(*) from public.members where id in (%L, %L)', m_b, m_t), '=2'),
         ('S02 super_admin: health_notes',           u_sa, format('select health_notes from public.members where id = %L', m_t), '=TEST-HN'),
         ('S03 super_admin: change a user''s role',  u_sa, format('with x as (update public.profiles set role = %L where id = %L returning 1) select count(*) from x', 'volunteer', u_ra_b), '=1'),
-        ('S04 super_admin: delete member',          u_sa, format('with x as (delete from public.members where id = %L returning 1) select count(*) from x', m_t), '=1')
+        ('S04 super_admin: delete member',          u_sa, format('with x as (delete from public.members where id = %L returning 1) select count(*) from x', m_t), '=1'),
+
+        ('N01 new account starts as volunteer',     u_new, format('select role from public.profiles where id = %L', u_new), '=volunteer')
       ) v(label, who, q, expect)
     loop
       total := total + 1;

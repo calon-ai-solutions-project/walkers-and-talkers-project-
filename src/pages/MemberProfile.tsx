@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMember, useMemberAttendance } from "@/hooks/useMembers";
 import { useMemberCards, useIssueCard } from "@/hooks/useCards";
 import { RevokeCardDialog } from "@/components/RevokeCardDialog";
+import { EditMemberDialog } from "@/components/EditMemberDialog";
 
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
@@ -33,6 +34,7 @@ export default function MemberProfile() {
   const { data: cards } = useMemberCards(id);
   const issueCard = useIssueCard();
   const [revokeId, setRevokeId] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
 
   async function issueAndProgram() {
     if (!id) return;
@@ -76,10 +78,21 @@ export default function MemberProfile() {
                 {initials(member.first_name, member.last_name)}
               </div>
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-1">
-                  <h1 className="text-xl font-bold text-foreground">{fullName}</h1>
-                  <Badge>{member.member_no}</Badge>
-                  {!member.active && <Badge variant="destructive">inactive</Badge>}
+                <div className="flex items-start justify-between gap-3 mb-1">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h1 className="text-xl font-bold text-foreground">{fullName}</h1>
+                    <Badge>{member.member_no}</Badge>
+                    {!member.active && <Badge variant="destructive">inactive</Badge>}
+                    {member.needs_full_data && <Badge variant="secondary">details needed</Badge>}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 shrink-0"
+                    onClick={() => setEditing(true)}
+                  >
+                    <Pencil className="h-4 w-4" /> Edit
+                  </Button>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 text-sm">
                   <div>
@@ -246,6 +259,7 @@ export default function MemberProfile() {
         open={!!revokeId}
         onOpenChange={(v) => !v && setRevokeId(null)}
       />
+      <EditMemberDialog member={member} open={editing} onOpenChange={setEditing} />
     </div>
   );
 }

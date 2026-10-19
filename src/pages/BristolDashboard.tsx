@@ -157,12 +157,11 @@ export default function BristolDashboard() {
               <Button
                 variant="destructive"
                 disabled={busy}
-                onClick={() =>
-                  cancelSession.mutate({
-                    regionId: region!.id,
-                    reason: window.prompt("Reason for cancelling?") ?? "",
-                  })
-                }
+                onClick={() => {
+                  const reason = window.prompt("Reason for cancelling?");
+                  if (reason === null) return; // dialog dismissed: keep the walk
+                  cancelSession.mutate({ regionId: region!.id, reason });
+                }}
               >
                 Cancel walk
               </Button>

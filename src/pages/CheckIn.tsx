@@ -8,6 +8,8 @@ import {
   useSessionAttendees,
   useManualCheckIn,
   useOpenSession,
+  useCloseSession,
+  useCancelSession,
 } from "@/hooks/useSessions";
 
 function fmtTime(iso: string) {
@@ -30,8 +32,18 @@ export default function CheckIn() {
   const { data: members } = useMembers();
   const manual = useManualCheckIn();
   const openSession = useOpenSession();
+  const closeSession = useCloseSession();
+  const cancelSession = useCancelSession();
+  const busy =
+    openSession.isPending || closeSession.isPending || cancelSession.isPending;
 
   const isOpen = !!session?.opened_at && !session?.closed_at && !session?.cancelled;
+
+  function cancelWalk() {
+    const reason = window.prompt("Reason for cancelling?");
+    if (reason === null) return; // dialog dismissed: keep the walk
+    cancelSession.mutate({ regionId: region!.id, reason });
+  }
   const today = new Date().toLocaleDateString("en-GB", {
     day: "numeric",
     month: "long",
@@ -80,6 +92,24 @@ export default function CheckIn() {
         <p className="text-lg text-muted-foreground mt-2">{today}</p>
       </div>
 
+      {isOpen && (
+        <div className="w-full max-w-md rounded-2xl p-5 mb-8 text-center border shadow-sm bg-success/10 border-success/30">
+          <p className="text-sm font-semibold text-success">Check-in is open</p>
+          <div className="mt-3 flex flex-wrap justify-center gap-3">
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={() => closeSession.mutate(session!.id)}
+            >
+              {closeSession.isPending ? "Closing…" : "Close check-in"}
+            </Button>
+            <Button variant="destructive" disabled={busy || !region} onClick={cancelWalk}>
+              {cancelSession.isPending ? "Cancelling…" : "Cancel walk"}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {!isOpen && (
         <div
           className={
@@ -99,7 +129,7 @@ export default function CheckIn() {
           <Button
             className="mt-3 text-white border-0 shadow-md"
             style={{ backgroundImage: "linear-gradient(135deg, #10b981, #047857)" }}
-            disabled={!region || openSession.isPending}
+            disabled={!region || busy}
             onClick={() => openSession.mutate(region!.id)}
           >
             {openSession.isPending

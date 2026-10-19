@@ -15,7 +15,9 @@ import {
   useMembers,
   useAttendanceCounts,
   useDeleteMember,
+  useMemberCardTokens,
 } from "@/hooks/useMembers";
+import { matchesSearch, sortMembers, SORT_OPTIONS, type SortKey } from "@/lib/memberSearch";
 
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
@@ -36,10 +38,12 @@ const statusVariant: Record<Status, "default" | "secondary" | "destructive"> = {
 export default function MemberDirectory() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>("all");
+  const [sort, setSort] = useState<SortKey>("last_name");
   const navigate = useNavigate();
 
   const { data: members, isLoading, error } = useMembers();
   const { data: counts } = useAttendanceCounts();
+  const { data: cardTokens } = useMemberCardTokens();
   const deleteMember = useDeleteMember();
 
   async function handleDelete(id: string, name: string) {
@@ -57,30 +61,31 @@ export default function MemberDirectory() {
   }
 
   const rows = useMemo(() => {
-    const list = (members ?? []).map((m) => {
+    const statusOf = (m: { active: boolean | null; needs_full_data: boolean | null }): Status =>
+      !m.active ? "inactive" : m.needs_full_data ? "pending" : "active";
+    // members_safe columns are all nullable in the generated types.
+    const list = (members ?? []).flatMap((m) =>
+      m.id != null && m.member_no != null && m.first_name != null
+        ? [{ ...m, id: m.id, member_no: m.member_no, first_name: m.first_name }]
+        : [],
+    );
+    const found = list.filter(
+      (m) =>
+        (status === "all" || statusOf(m) === status) &&
+        matchesSearch(m, search, cardTokens?.[m.id]),
+    );
+    return sortMembers(found, sort).map((m) => {
       const c = counts?.[m.id];
-      const st: Status = !m.active
-        ? "inactive"
-        : m.needs_full_data
-          ? "pending"
-          : "active";
       return {
         id: m.id,
         member_no: m.member_no,
         name: `${m.first_name} ${m.last_name ?? ""}`.trim(),
         visits: c?.visits ?? 0,
         lastSeen: fmtDate(c?.last ?? null),
-        status: st,
+        status: statusOf(m),
       };
     });
-    const q = search.toLowerCase();
-    return list.filter(
-      (m) =>
-        (status === "all" || m.status === status) &&
-        (m.name.toLowerCase().includes(q) ||
-          m.member_no.toLowerCase().includes(q)),
-    );
-  }, [members, counts, search, status]);
+  }, [members, counts, cardTokens, search, status, sort]);
 
   return (
     <div>
@@ -100,7 +105,7 @@ export default function MemberDirectory() {
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/60" />
             <Input
-              placeholder="Search by name or ID…"
+              placeholder="Search name, email, phone, postcode, member or card number…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-12 h-12 rounded-xl bg-white border-primary/30 shadow-sm focus-visible:ring-primary text-base"
@@ -115,6 +120,21 @@ export default function MemberDirectory() {
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
+            <SelectTrigger
+              className="w-full sm:w-48 h-12 rounded-xl bg-white border-primary/30"
+              aria-label="Sort members"
+            >
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              {SORT_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

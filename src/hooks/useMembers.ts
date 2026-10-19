@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
 export function useBristolRegion() {
   return useQuery({
@@ -113,6 +114,49 @@ export function useDeleteMember() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["members"] });
       qc.invalidateQueries({ queryKey: ["attendance-counts"] });
+    },
+  });
+}
+
+// Card numbers (tokens) per member, so the directory can search by card.
+export function useMemberCardTokens() {
+  return useQuery({
+    queryKey: ["member-card-tokens"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("cards").select("member_id, token");
+      if (error) throw error;
+      const map: Record<string, string[]> = {};
+      for (const c of data ?? []) (map[c.member_id] ??= []).push(c.token);
+      return map;
+    },
+  });
+}
+
+export type MemberChanges = Database["public"]["Tables"]["members"]["Update"];
+
+export function useUpdateMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, changes }: { id: string; changes: MemberChanges }) => {
+      const { data, error } = await supabase
+        .from("members")
+        .update(changes)
+        .eq("id", id)
+        .select("id");
+      if (error) {
+        if (error.code === "23505") {
+          throw new Error(
+            `Member number ${changes.member_no} is already used by another member.`,
+          );
+        }
+        throw error;
+      }
+      // RLS filters out rows the caller may not change instead of erroring.
+      if (!data?.length) throw new Error("You don't have permission to edit this member.");
+    },
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: ["member", id] });
+      qc.invalidateQueries({ queryKey: ["members"] });
     },
   });
 }

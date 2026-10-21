@@ -11,8 +11,6 @@ Deno.serve(async (req) => {
     const today = new Date().toISOString().slice(0, 10);
     const results = {
       thank_you: 0,
-      missed_you: 0,
-      welfare: 0,
       escalations: 0,
       skipped: 0,
     };
@@ -27,6 +25,8 @@ Deno.serve(async (req) => {
 
     for (const session of closedToday ?? []) {
       // --- THANK YOU emails to attendees ---
+      // Only people who attended are emailed. The missed-you and welfare
+      // emails to non-attendees were switched off on 2026-10-21.
       const { data: attendees } = await supabase
         .from("session_attendees_view")
         .select("*")
@@ -40,39 +40,6 @@ Deno.serve(async (req) => {
         }
         await sendEmail("thank_you", a.member_id, session.id);
         results.thank_you++;
-      }
-
-      // --- MISSED YOU emails to non-attendees ---
-      const { data: missed } = await supabase.rpc("members_who_missed_session", {
-        p_session_id: session.id,
-      });
-
-      for (const m of missed ?? []) {
-        const consecMissed = m.consecutive_misses;
-
-        // Frequency rule:
-        // - 1st or 2nd consecutive miss: send missed_you
-        // - 3rd or more consecutive: switch to welfare email
-        if (consecMissed >= 3) {
-          // Check welfare cap: don't re-send welfare if we sent one in last 14 days
-          const recentWelfare = await alreadySentWithin(m.member_id, "welfare", 14);
-          if (recentWelfare) {
-            results.skipped++;
-            continue;
-          }
-          await sendEmail("welfare", m.member_id, session.id);
-          await createOrUpdateWelfareFlag(m.member_id, consecMissed);
-          results.welfare++;
-        } else {
-          // Send missed_you if we haven't already sent one this week
-          const sentThisWeek = await alreadySentThisWeek(m.member_id, "missed_you", today);
-          if (sentThisWeek) {
-            results.skipped++;
-            continue;
-          }
-          await sendEmail("missed_you", m.member_id, session.id);
-          results.missed_you++;
-        }
       }
     }
 
@@ -118,20 +85,6 @@ async function alreadySentThisWeek(memberId: string, template: string, weekOf: s
   return (data?.length ?? 0) > 0;
 }
 
-async function alreadySentWithin(memberId: string, template: string, days: number): Promise<boolean> {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
-  const { data } = await supabase
-    .from("email_log")
-    .select("id")
-    .eq("member_id", memberId)
-    .eq("template", template)
-    .gte("sent_at", cutoff.toISOString())
-    .eq("sent_status", "sent")
-    .limit(1);
-  return (data?.length ?? 0) > 0;
-}
-
 async function sendEmail(template: string, memberId: string, sessionId?: string): Promise<void> {
   await fetch(SEND_EMAIL_URL, {
     method: "POST",
@@ -141,31 +94,4 @@ async function sendEmail(template: string, memberId: string, sessionId?: string)
     },
     body: JSON.stringify({ template, member_id: memberId, session_id: sessionId }),
   });
-}
-
-async function createOrUpdateWelfareFlag(memberId: string, weeksAbsent: number) {
-  const { data: existing } = await supabase
-    .from("welfare_flags")
-    .select("id")
-    .eq("member_id", memberId)
-    .is("resolved_at", null)
-    .limit(1);
-
-  if (existing?.length) {
-    await supabase
-      .from("welfare_flags")
-      .update({
-        weeks_absent: weeksAbsent,
-        stage: weeksAbsent >= 4 ? "welfare_check" : "missed_you",
-        last_email_sent_at: new Date().toISOString(),
-      })
-      .eq("id", existing[0].id);
-  } else {
-    await supabase.from("welfare_flags").insert({
-      member_id: memberId,
-      weeks_absent: weeksAbsent,
-      stage: "welfare_check",
-      last_email_sent_at: new Date().toISOString(),
-    });
-  }
 }

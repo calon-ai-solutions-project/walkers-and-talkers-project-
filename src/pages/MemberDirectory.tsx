@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
-import { Search, Eye, Trash2 } from "lucide-react";
+import { Search, Eye, Trash2, Printer, Check } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +48,76 @@ export default function MemberDirectory() {
   const { data: cardTokens } = useMemberCardTokens();
   const deleteMember = useDeleteMember();
 
+  // Card print status: a member counts as "printed" when any of their cards
+  // has a printed_at timestamp. Drives the Printed / Not printed tag + button
+  // and the "Card printed" / "Card not printed" status filters.
+  const qc = useQueryClient();
+  const [markingId, setMarkingId] = useState<string | null>(null);
+  const { data: printMap } = useQuery({
+    queryKey: ["card-print-status"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("cards") as any).select(
+        "member_id, printed_at",
+      );
+      if (error) throw error;
+      const map: Record<string, boolean> = {};
+      for (const c of (data ?? []) as Array<{
+        member_id: string;
+        printed_at: string | null;
+      }>) {
+        if (c.printed_at) map[c.member_id] = true;
+        else if (!(c.member_id in map)) map[c.member_id] = false;
+      }
+      return map;
+    },
+  });
+
+  async function markPrinted(memberId: string, name: string) {
+    setMarkingId(memberId);
+    try {
+      const { error } = await (supabase.from("cards") as any)
+        .update({ printed_at: new Date().toISOString() })
+        .eq("member_id", memberId)
+        .is("printed_at", null);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["card-print-status"] });
+    } catch (e) {
+      window.alert(`Couldn't mark ${name} as printed: ` + (e as Error).message);
+    } finally {
+      setMarkingId(null);
+    }
+  }
+
+  function printCell(id: string, name: string, printed: boolean) {
+    if (printed) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+          <Check className="h-3 w-3" /> Printed
+        </span>
+      );
+    }
+    return (
+      <div className="flex items-center gap-2">
+        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
+          Not printed
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1"
+          disabled={markingId === id}
+          onClick={(e) => {
+            e.stopPropagation();
+            void markPrinted(id, name);
+          }}
+        >
+          <Printer className="h-4 w-4" />
+          {markingId === id ? "Saving…" : "Mark printed"}
+        </Button>
+      </div>
+    );
+  }
+
   async function handleDelete(id: string, name: string) {
     if (
       !window.confirm(
@@ -69,11 +141,14 @@ export default function MemberDirectory() {
         ? [{ ...m, id: m.id, member_no: m.member_no, first_name: m.first_name }]
         : [],
     );
-    const found = list.filter(
-      (m) =>
-        (status === "all" || statusOf(m) === status) &&
-        matchesSearch(m, search, cardTokens?.[m.id]),
-    );
+    const found = list.filter((m) => {
+      const matchStatus =
+        status === "all" ||
+        statusOf(m) === status ||
+        (status === "printed" && !!printMap?.[m.id]) ||
+        (status === "not_printed" && !printMap?.[m.id]);
+      return matchStatus && matchesSearch(m, search, cardTokens?.[m.id]);
+    });
     return sortMembers(found, sort).map((m) => {
       const c = counts?.[m.id];
       return {
@@ -83,9 +158,10 @@ export default function MemberDirectory() {
         visits: c?.visits ?? 0,
         lastSeen: fmtDate(c?.last ?? null),
         status: statusOf(m),
+        printed: !!printMap?.[m.id],
       };
     });
-  }, [members, counts, cardTokens, search, status, sort]);
+  }, [members, counts, cardTokens, printMap, search, status, sort]);
 
   return (
     <div>
@@ -120,6 +196,8 @@ export default function MemberDirectory() {
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="not_printed">Card not printed</SelectItem>
+              <SelectItem value="printed">Card printed</SelectItem>
             </SelectContent>
           </Select>
           <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
@@ -176,7 +254,10 @@ export default function MemberDirectory() {
                     <span>Last seen {m.lastSeen}</span>
                   </div>
                 </div>
-                <div className="flex justify-end gap-2 mt-3 pt-3 border-t">
+                <div className="mt-3 pt-3 border-t">
+                  {printCell(m.id, m.name, m.printed)}
+                </div>
+                <div className="flex justify-end gap-2 mt-3">
                   <Button
                     variant="outline"
                     size="sm"
@@ -207,6 +288,7 @@ export default function MemberDirectory() {
                 <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Visits</th>
                 <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Last Seen</th>
                 <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Status</th>
+                <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Card</th>
                 <th className="text-right py-3 px-4 font-semibold text-muted-foreground">Actions</th>
               </tr>
             </thead>
@@ -223,6 +305,9 @@ export default function MemberDirectory() {
                   <td className="py-3 px-4 text-muted-foreground">{m.lastSeen}</td>
                   <td className="py-3 px-4">
                     <Badge variant={statusVariant[m.status]}>{m.status}</Badge>
+                  </td>
+                  <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                    {printCell(m.id, m.name, m.printed)}
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center justify-end gap-1">

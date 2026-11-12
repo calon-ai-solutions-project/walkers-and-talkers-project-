@@ -3,10 +3,24 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useMember, useMemberAttendance } from "@/hooks/useMembers";
+import {
+  useMember,
+  useMemberAttendance,
+  useBulkUpdateCardStatus,
+  CARD_STATUSES,
+  CARD_STATUS_LABEL,
+  asCardStatus,
+  type CardStatus,
+} from "@/hooks/useMembers";
 import { useMemberCards, useIssueCard } from "@/hooks/useCards";
 import { RevokeCardDialog } from "@/components/RevokeCardDialog";
 import { EditMemberDialog } from "@/components/EditMemberDialog";
+
+const CARD_STATUS_PILL: Record<CardStatus, string> = {
+  to_print: "bg-amber-100 text-amber-800",
+  on_the_way: "bg-blue-100 text-blue-800",
+  delivered: "bg-emerald-100 text-emerald-800",
+};
 
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
@@ -33,6 +47,7 @@ export default function MemberProfile() {
   const { data: attendance } = useMemberAttendance(id);
   const { data: cards } = useMemberCards(id);
   const issueCard = useIssueCard();
+  const bulk = useBulkUpdateCardStatus();
   const [revokeId, setRevokeId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
 
@@ -40,6 +55,15 @@ export default function MemberProfile() {
     if (!id) return;
     const created = await issueCard.mutateAsync(id);
     navigate(`/cards/program/${created.id}`);
+  }
+
+  async function changeCardStatus(next: CardStatus) {
+    if (!id) return;
+    try {
+      await bulk.mutateAsync({ ids: [id], status: next });
+    } catch (e) {
+      window.alert("Couldn't update card status: " + (e as Error).message);
+    }
   }
 
   if (isLoading) {
@@ -63,6 +87,7 @@ export default function MemberProfile() {
   const firstVisit = dates[0] ?? null;
   const lastVisit = dates[dates.length - 1] ?? null;
   const fullName = `${member.first_name} ${member.last_name ?? ""}`.trim();
+  const cardStatus = asCardStatus(member.print_status);
 
   return (
     <div>
@@ -84,6 +109,11 @@ export default function MemberProfile() {
                     <Badge>{member.member_no}</Badge>
                     {!member.active && <Badge variant="destructive">inactive</Badge>}
                     {member.needs_full_data && <Badge variant="secondary">details needed</Badge>}
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${CARD_STATUS_PILL[cardStatus]}`}
+                    >
+                      Card: {CARD_STATUS_LABEL[cardStatus]}
+                    </span>
                   </div>
                   <Button
                     variant="outline"
@@ -154,7 +184,25 @@ export default function MemberProfile() {
           {/* Cards */}
           <div className="stat-card">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-foreground">Cards</h3>
+              <div className="flex items-center gap-3">
+                <h3 className="text-sm font-semibold text-foreground">Cards</h3>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  Printing:
+                  <select
+                    value={cardStatus}
+                    disabled={bulk.isPending}
+                    aria-label="Card printing status"
+                    onChange={(e) => void changeCardStatus(e.target.value as CardStatus)}
+                    className={`text-xs font-semibold rounded-full px-2.5 py-1 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40 ${CARD_STATUS_PILL[cardStatus]}`}
+                  >
+                    {CARD_STATUSES.map((s) => (
+                      <option key={s} value={s}>
+                        {CARD_STATUS_LABEL[s]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
               <Button
                 size="sm"
                 onClick={() => void issueAndProgram()}

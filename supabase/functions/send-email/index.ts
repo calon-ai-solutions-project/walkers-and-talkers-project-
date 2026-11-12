@@ -62,6 +62,38 @@ async function callerKind(req: Request): Promise<"service" | "staff" | null> {
   return profile && staff.includes(profile.role) ? "staff" : null;
 }
 
+// Reads the central kill switch. Fail-closed: any error, or a missing row,
+// counts as PAUSED so a database blip can never let email leak out.
+async function communicationsPaused(): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from("app_settings")
+      .select("communications_paused")
+      .eq("id", 1)
+      .single();
+    if (error) return true;
+    return data?.communications_paused !== false;
+  } catch {
+    return true;
+  }
+}
+
+// Best-effort audit trail of suppressed sends. Member templates only
+// (email_log.member_id is NOT NULL); never throws into the caller.
+async function logSuppressed(body: SendRequest): Promise<void> {
+  if (body.template === "admin_invite") return;
+  const b = body as MemberSendRequest;
+  if (!b.member_id) return;
+  await supabase.from("email_log").insert({
+    member_id: b.member_id,
+    template: b.template,
+    subject: "(suppressed — communications paused)",
+    sent_status: "suppressed",
+    status: "suppressed",
+    week_of: new Date().toISOString().slice(0, 10),
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -77,6 +109,23 @@ Deno.serve(async (req) => {
     }
 
     const body: SendRequest = await req.json();
+
+    // ------------------------------------------------------------------
+    // COMMUNICATIONS KILL SWITCH (fail-closed).
+    // Every outgoing email in this project funnels through this function,
+    // so one check here pauses welcome, thank_you, missed_you, welfare and
+    // admin_invite for ALL callers (frontend Add Member, register-member,
+    // invite-admin, nudge-cron). If the flag cannot be read we treat the
+    // system as PAUSED and send nothing. Reactivate only by setting
+    // public.app_settings.communications_paused = false (super_admin).
+    // ------------------------------------------------------------------
+    if (await communicationsPaused()) {
+      await logSuppressed(body).catch(() => {});
+      return json(
+        { ok: false, reason: "communications_paused", suppressed: true },
+        200,
+      );
+    }
 
     // Signed-in staff only trigger the welcome email for a member they just
     // added; every other template is sent by server-side functions.

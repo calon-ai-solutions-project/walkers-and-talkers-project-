@@ -1,7 +1,5 @@
 import { useMemo, useState } from "react";
-import { Search, Eye, Trash2, Printer, Check } from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { Search, Eye, Trash2, Printer } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +16,11 @@ import {
   useAttendanceCounts,
   useDeleteMember,
   useMemberCardTokens,
+  useBulkUpdateCardStatus,
+  CARD_STATUSES,
+  CARD_STATUS_LABEL,
+  asCardStatus,
+  type CardStatus,
 } from "@/hooks/useMembers";
 import { matchesSearch, sortMembers, SORT_OPTIONS, type SortKey } from "@/lib/memberSearch";
 
@@ -37,86 +40,25 @@ const statusVariant: Record<Status, "default" | "secondary" | "destructive"> = {
   inactive: "destructive",
 };
 
+// Colours for the card printing status pill / select.
+const CARD_STATUS_PILL: Record<CardStatus, string> = {
+  to_print: "bg-amber-100 text-amber-800",
+  on_the_way: "bg-blue-100 text-blue-800",
+  delivered: "bg-emerald-100 text-emerald-800",
+};
+
 export default function MemberDirectory() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>("all");
   const [sort, setSort] = useState<SortKey>("last_name");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
 
   const { data: members, isLoading, error } = useMembers();
   const { data: counts } = useAttendanceCounts();
   const { data: cardTokens } = useMemberCardTokens();
   const deleteMember = useDeleteMember();
-
-  // Card print status: a member counts as "printed" when any of their cards
-  // has a printed_at timestamp. Drives the Printed / Not printed tag + button
-  // and the "Card printed" / "Card not printed" status filters.
-  const qc = useQueryClient();
-  const [markingId, setMarkingId] = useState<string | null>(null);
-  const { data: printMap } = useQuery({
-    queryKey: ["card-print-status"],
-    queryFn: async () => {
-      const { data, error } = await (supabase.from("cards") as any).select(
-        "member_id, printed_at",
-      );
-      if (error) throw error;
-      const map: Record<string, boolean> = {};
-      for (const c of (data ?? []) as Array<{
-        member_id: string;
-        printed_at: string | null;
-      }>) {
-        if (c.printed_at) map[c.member_id] = true;
-        else if (!(c.member_id in map)) map[c.member_id] = false;
-      }
-      return map;
-    },
-  });
-
-  async function markPrinted(memberId: string, name: string) {
-    setMarkingId(memberId);
-    try {
-      const { error } = await (supabase.from("cards") as any)
-        .update({ printed_at: new Date().toISOString() })
-        .eq("member_id", memberId)
-        .is("printed_at", null);
-      if (error) throw error;
-      qc.invalidateQueries({ queryKey: ["card-print-status"] });
-    } catch (e) {
-      window.alert(`Couldn't mark ${name} as printed: ` + (e as Error).message);
-    } finally {
-      setMarkingId(null);
-    }
-  }
-
-  function printCell(id: string, name: string, printed: boolean) {
-    if (printed) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
-          <Check className="h-3 w-3" /> Printed
-        </span>
-      );
-    }
-    return (
-      <div className="flex items-center gap-2">
-        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
-          Not printed
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1"
-          disabled={markingId === id}
-          onClick={(e) => {
-            e.stopPropagation();
-            void markPrinted(id, name);
-          }}
-        >
-          <Printer className="h-4 w-4" />
-          {markingId === id ? "Saving…" : "Mark printed"}
-        </Button>
-      </div>
-    );
-  }
+  const bulk = useBulkUpdateCardStatus();
 
   async function handleDelete(id: string, name: string) {
     if (
@@ -132,6 +74,32 @@ export default function MemberDirectory() {
     }
   }
 
+  // Change one member's card status (inline select on each row).
+  async function changeOne(id: string, next: CardStatus) {
+    try {
+      await bulk.mutateAsync({ ids: [id], status: next });
+    } catch (e) {
+      window.alert("Couldn't update card status: " + (e as Error).message);
+    }
+  }
+
+  // Change every selected member's card status at once.
+  async function changeMany(next: CardStatus) {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    try {
+      const { updated } = await bulk.mutateAsync({ ids, status: next });
+      setSelected(new Set());
+      if (updated < ids.length) {
+        window.alert(
+          `${updated} of ${ids.length} updated. The rest are outside your region / permissions.`,
+        );
+      }
+    } catch (e) {
+      window.alert("Couldn't update card statuses: " + (e as Error).message);
+    }
+  }
+
   const rows = useMemo(() => {
     const statusOf = (m: { active: boolean | null; needs_full_data: boolean | null }): Status =>
       !m.active ? "inactive" : m.needs_full_data ? "pending" : "active";
@@ -142,11 +110,13 @@ export default function MemberDirectory() {
         : [],
     );
     const found = list.filter((m) => {
+      const card = asCardStatus(m.print_status);
       const matchStatus =
         status === "all" ||
         statusOf(m) === status ||
-        (status === "printed" && !!printMap?.[m.id]) ||
-        (status === "not_printed" && !printMap?.[m.id]);
+        (status === "card_to_print" && card === "to_print") ||
+        (status === "card_on_the_way" && card === "on_the_way") ||
+        (status === "card_delivered" && card === "delivered");
       return matchStatus && matchesSearch(m, search, cardTokens?.[m.id]);
     });
     return sortMembers(found, sort).map((m) => {
@@ -158,10 +128,48 @@ export default function MemberDirectory() {
         visits: c?.visits ?? 0,
         lastSeen: fmtDate(c?.last ?? null),
         status: statusOf(m),
-        printed: !!printMap?.[m.id],
+        cardStatus: asCardStatus(m.print_status),
       };
     });
-  }, [members, counts, cardTokens, printMap, search, status, sort]);
+  }, [members, counts, cardTokens, search, status, sort]);
+
+  const filteredIds = rows.map((r) => r.id);
+  const allSelected = filteredIds.length > 0 && filteredIds.every((id) => selected.has(id));
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function toggleAll() {
+    setSelected(() => (allSelected ? new Set() : new Set(filteredIds)));
+  }
+
+  // The inline card-status control: a coloured select on each row.
+  function StatusSelect({ id, value }: { id: string; value: CardStatus }) {
+    return (
+      <select
+        value={value}
+        disabled={bulk.isPending}
+        aria-label="Card printing status"
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => {
+          e.stopPropagation();
+          void changeOne(id, e.target.value as CardStatus);
+        }}
+        className={`text-xs font-semibold rounded-full px-2.5 py-1 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40 ${CARD_STATUS_PILL[value]}`}
+      >
+        {CARD_STATUSES.map((s) => (
+          <option key={s} value={s}>
+            {CARD_STATUS_LABEL[s]}
+          </option>
+        ))}
+      </select>
+    );
+  }
 
   return (
     <div>
@@ -188,7 +196,7 @@ export default function MemberDirectory() {
             />
           </div>
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="w-full sm:w-44 h-12 rounded-xl bg-white border-primary/30">
+            <SelectTrigger className="w-full sm:w-52 h-12 rounded-xl bg-white border-primary/30">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -196,8 +204,9 @@ export default function MemberDirectory() {
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
-              <SelectItem value="not_printed">Card not printed</SelectItem>
-              <SelectItem value="printed">Card printed</SelectItem>
+              <SelectItem value="card_to_print">Card: To Print</SelectItem>
+              <SelectItem value="card_on_the_way">Card: On the Way</SelectItem>
+              <SelectItem value="card_delivered">Card: Delivered</SelectItem>
             </SelectContent>
           </Select>
           <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
@@ -217,6 +226,36 @@ export default function MemberDirectory() {
           </Select>
         </div>
       </div>
+
+      {/* Bulk card-status toolbar */}
+      {selected.size > 0 && (
+        <div className="rounded-xl mb-4 px-4 py-3 bg-primary/5 border border-primary/20 flex flex-col sm:flex-row sm:items-center gap-3">
+          <span className="text-sm font-medium text-foreground inline-flex items-center gap-2">
+            <Printer className="h-4 w-4" />
+            {selected.size} selected — set card status to:
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {CARD_STATUSES.map((s) => (
+              <Button
+                key={s}
+                size="sm"
+                variant="outline"
+                disabled={bulk.isPending}
+                onClick={() => void changeMany(s)}
+              >
+                {CARD_STATUS_LABEL[s]}
+              </Button>
+            ))}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setSelected(new Set())}
+            >
+              Clear
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div>
         {isLoading ? (
@@ -238,41 +277,53 @@ export default function MemberDirectory() {
                 key={m.id}
                 className="bg-card rounded-2xl border p-4 shadow-sm"
               >
-                <div
-                  onClick={() => navigate(`/members/${m.id}`)}
-                  className="cursor-pointer active:scale-[0.99] transition"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-foreground truncate">{m.name}</p>
-                      <p className="text-xs text-muted-foreground">{m.member_no}</p>
-                    </div>
-                    <Badge variant={statusVariant[m.status]}>{m.status}</Badge>
-                  </div>
-                  <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                    <span>{m.visits} visits</span>
-                    <span>Last seen {m.lastSeen}</span>
-                  </div>
-                </div>
-                <div className="mt-3 pt-3 border-t">
-                  {printCell(m.id, m.name, m.printed)}
-                </div>
-                <div className="flex justify-end gap-2 mt-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 accent-primary cursor-pointer"
+                    aria-label={`Select ${m.name}`}
+                    checked={selected.has(m.id)}
+                    onChange={() => toggleOne(m.id)}
+                  />
+                  <div
+                    className="flex-1 min-w-0 cursor-pointer active:scale-[0.99] transition"
                     onClick={() => navigate(`/members/${m.id}`)}
                   >
-                    View
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive"
-                    onClick={() => void handleDelete(m.id, m.name)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" /> Delete
-                  </Button>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-foreground truncate">{m.name}</p>
+                        <p className="text-xs text-muted-foreground">{m.member_no}</p>
+                      </div>
+                      <Badge variant={statusVariant[m.status]}>{m.status}</Badge>
+                    </div>
+                    <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                      <span>{m.visits} visits</span>
+                      <span>Last seen {m.lastSeen}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Card:</span>
+                    <StatusSelect id={m.id} value={m.cardStatus} />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/members/${m.id}`)}
+                    >
+                      View
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                      onClick={() => void handleDelete(m.id, m.name)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" /> Delete
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -283,6 +334,15 @@ export default function MemberDirectory() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
+                <th className="py-3 px-4 w-10">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-primary cursor-pointer"
+                    aria-label="Select all shown"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                  />
+                </th>
                 <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Name</th>
                 <th className="text-left py-3 px-4 font-semibold text-muted-foreground">ID</th>
                 <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Visits</th>
@@ -296,9 +356,20 @@ export default function MemberDirectory() {
               {rows.map((m) => (
                 <tr
                   key={m.id}
-                  className="border-b last:border-0 hover:bg-muted/50 transition-colors cursor-pointer"
+                  className={`border-b last:border-0 hover:bg-muted/50 transition-colors cursor-pointer ${
+                    selected.has(m.id) ? "bg-primary/5" : ""
+                  }`}
                   onClick={() => navigate(`/members/${m.id}`)}
                 >
+                  <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-primary cursor-pointer"
+                      aria-label={`Select ${m.name}`}
+                      checked={selected.has(m.id)}
+                      onChange={() => toggleOne(m.id)}
+                    />
+                  </td>
                   <td className="py-3 px-4 font-medium text-foreground">{m.name}</td>
                   <td className="py-3 px-4 text-muted-foreground">{m.member_no}</td>
                   <td className="py-3 px-4 text-foreground">{m.visits}</td>
@@ -307,7 +378,7 @@ export default function MemberDirectory() {
                     <Badge variant={statusVariant[m.status]}>{m.status}</Badge>
                   </td>
                   <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                    {printCell(m.id, m.name, m.printed)}
+                    <StatusSelect id={m.id} value={m.cardStatus} />
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center justify-end gap-1">

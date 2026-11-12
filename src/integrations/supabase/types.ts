@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          communications_paused: boolean
+          id: number
+          paused_at: string | null
+          paused_reason: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          communications_paused?: boolean
+          id?: number
+          paused_at?: string | null
+          paused_reason?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          communications_paused?: boolean
+          id?: number
+          paused_at?: string | null
+          paused_reason?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       attendance: {
         Row: {
           card_id: string | null
@@ -80,6 +107,48 @@ export type Database = {
           },
         ]
       }
+      card_status_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          id: string
+          member_id: string
+          new_status: string
+          old_status: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          member_id: string
+          new_status: string
+          old_status?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          member_id?: string
+          new_status?: string
+          old_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_status_history_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "card_status_history_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cards: {
         Row: {
           hardware_uid: string | null
@@ -87,6 +156,7 @@ export type Database = {
           issued_at: string | null
           member_id: string
           notes: string | null
+          printed_at: string | null
           revoked_at: string | null
           state: string
           token: string
@@ -97,6 +167,7 @@ export type Database = {
           issued_at?: string | null
           member_id: string
           notes?: string | null
+          printed_at?: string | null
           revoked_at?: string | null
           state?: string
           token: string
@@ -107,6 +178,7 @@ export type Database = {
           issued_at?: string | null
           member_id?: string
           notes?: string | null
+          printed_at?: string | null
           revoked_at?: string | null
           state?: string
           token?: string
@@ -269,6 +341,7 @@ export type Database = {
           phone: string | null
           photo_consent: boolean | null
           postcode: string | null
+          print_status: string
           region_id: string
           updated_at: string | null
         }
@@ -296,6 +369,7 @@ export type Database = {
           phone?: string | null
           photo_consent?: boolean | null
           postcode?: string | null
+          print_status?: string
           region_id: string
           updated_at?: string | null
         }
@@ -323,6 +397,7 @@ export type Database = {
           phone?: string | null
           photo_consent?: boolean | null
           postcode?: string | null
+          print_status?: string
           region_id?: string
           updated_at?: string | null
         }
@@ -544,6 +619,7 @@ export type Database = {
           needs_full_data: boolean | null
           phone: string | null
           postcode: string | null
+          print_status: string | null
           region_id: string | null
           updated_at: string | null
         }
@@ -563,6 +639,7 @@ export type Database = {
           needs_full_data?: boolean | null
           phone?: string | null
           postcode?: string | null
+          print_status?: string | null
           region_id?: string | null
           updated_at?: string | null
         }
@@ -582,6 +659,7 @@ export type Database = {
           needs_full_data?: boolean | null
           phone?: string | null
           postcode?: string | null
+          print_status?: string | null
           region_id?: string | null
           updated_at?: string | null
         }
@@ -646,6 +724,7 @@ export type Database = {
         Returns: Json
       }
       claim_admin: { Args: never; Returns: Json }
+      communications_paused: { Args: never; Returns: boolean }
       create_member: {
         Args: {
           p_address_line1?: string

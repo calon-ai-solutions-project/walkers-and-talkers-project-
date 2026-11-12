@@ -132,6 +132,56 @@ export function useMemberCardTokens() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Card printing status (per member).
+//   to_print   -> card not yet submitted to the printer (default for new members)
+//   on_the_way -> card submitted to the printing supplier
+//   delivered  -> physical card received / handed to the member
+// Changing members.print_status is recorded in card_status_history by a DB
+// trigger. Updating the status never sends email (no trigger does), and all
+// outgoing email is paused by the communications kill switch regardless.
+// ---------------------------------------------------------------------------
+export type CardStatus = "to_print" | "on_the_way" | "delivered";
+
+export const CARD_STATUSES: CardStatus[] = ["to_print", "on_the_way", "delivered"];
+
+export const CARD_STATUS_LABEL: Record<CardStatus, string> = {
+  to_print: "To Print",
+  on_the_way: "On the Way",
+  delivered: "Delivered",
+};
+
+export function asCardStatus(v: string | null | undefined): CardStatus {
+  return v === "on_the_way" || v === "delivered" ? v : "to_print";
+}
+
+export function useBulkUpdateCardStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      ids,
+      status,
+    }: {
+      ids: string[];
+      status: CardStatus;
+    }): Promise<{ updated: number }> => {
+      if (ids.length === 0) return { updated: 0 };
+      const { data, error } = await supabase
+        .from("members")
+        .update({ print_status: status })
+        .in("id", ids)
+        .select("id");
+      if (error) throw error;
+      // RLS silently filters out rows the caller may not update.
+      return { updated: data?.length ?? 0 };
+    },
+    onSuccess: (_res, { ids }) => {
+      qc.invalidateQueries({ queryKey: ["members"] });
+      for (const id of ids) qc.invalidateQueries({ queryKey: ["member", id] });
+    },
+  });
+}
+
 export type MemberChanges = Database["public"]["Tables"]["members"]["Update"];
 
 export function useUpdateMember() {
